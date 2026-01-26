@@ -30,8 +30,8 @@
             filePath = "metal_cpp/view/renderer.cpp"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "89"
-            endingLineNumber = "89"
+            startingLineNumber = "105"
+            endingLineNumber = "105"
             landmarkName = "Renderer::DrawFrame()"
             landmarkType = "7">
          </BreakpointContent>

@@ -9,6 +9,7 @@
 #include "view/pipeline_factory.h"
 #include "backend/mtlm.h"
 #include "boids/instance.h"
+#include "config.h"
 #include <random>
 
 Renderer::Renderer(MTL::Device* device, CA::MetalLayer* layer, GLFWwindow* glfwWindow):
@@ -25,10 +26,13 @@ Renderer::~Renderer() {
     quadMesh.indexBuffer->release();
     quadMesh.vertexDescriptor->release();
     
-    triangleMesh->release();
+    triangleMesh.vertexBuffer->release();
+    triangleMesh.indexBuffer->release();
+    triangleMesh.vertexDescriptor->release();
 //    trianglePipeline->release();
     
-    generalPipeline->release();
+//    generalPipeline->release();
+    boidRenderPipeline->release();
     commandQueue->release();
     metalLayer->release();
     device->release();
@@ -41,13 +45,14 @@ void Renderer::buildMeshes() {
 
 void Renderer::buildShaders() {
     PipelineBuilder* builder = new PipelineBuilder(device);
-    builder->set_filename("shaders/general.metal");
-    builder->set_vertex_descriptor(quadMesh.vertexDescriptor);
-    builder->set_vertex_entry_point("vertexMainGeneral");
-    builder->set_fragment_entry_point("fragmentMainGeneral");
-    generalPipeline = builder->build();
+//    builder->set_filename("shaders/general.metal");
+//    builder->set_vertex_descriptor(quadMesh.vertexDescriptor);
+//    builder->set_vertex_entry_point("vertexMainGeneral");
+//    builder->set_fragment_entry_point("fragmentMainGeneral");
+//    generalPipeline = builder->build();
     
     builder->set_filename("shaders/boids_render.metal");
+    builder->set_vertex_descriptor(triangleMesh.vertexDescriptor);
     builder->set_vertex_entry_point("vertexMainBoid");
     builder->set_fragment_entry_point("fragmentMainBoid");
     boidRenderPipeline = builder->build();
@@ -64,7 +69,11 @@ void Renderer::DrawFrame() {
     
     MTL::CommandBuffer* commandBuffer = commandQueue->commandBuffer();
     
-    boidManager->update_grid();
+//    boidManager->update();
+    if(BoidVersion == 1)
+        boidManager->update_grid();
+    else if (BoidVersion == 2)
+        boidManager->update_grid_2();
     
     // render pass
     MTL::RenderPassDescriptor* rpDesc = MTL::RenderPassDescriptor::alloc()->init();
@@ -79,14 +88,21 @@ void Renderer::DrawFrame() {
     
     
     encoder->setRenderPipelineState(boidRenderPipeline);
-    simd::float4x4 transform = mtlm::scale(0.01);
+    simd::float4x4 transform = mtlm::scale(0.005);
     encoder->setVertexBytes(&transform, sizeof(simd::float4x4), 1);
-    encoder->setVertexBuffer(triangleMesh, 0, 0);
-    if(parity == 0)
-        encoder->setVertexBuffer(boidManager->boidOut, 0, 2);
+    encoder->setVertexBuffer(triangleMesh.vertexBuffer, 0, 0);
+    if(BoidVersion == 1)
+        if(boidManager->parity == 0)
+            encoder->setVertexBuffer(boidManager->boidOut, 0, 2);
+        else
+            encoder->setVertexBuffer(boidManager->boidIn, 0, 2);
     else
-        encoder->setVertexBuffer(boidManager->boidIn, 0, 2);
-    encoder->drawIndexedPrimitives(MTL::PrimitiveTypeTriangle, 6, MTL::IndexTypeUInt16, quadMesh.indexBuffer, 0, boidManager->kCount);
+        if(boidManager->parity == 0)
+            encoder->setVertexBuffer(boidManager->boidOut_2, 0, 2);
+        else
+            encoder->setVertexBuffer(boidManager->boidIn_2, 0, 2);
+
+    encoder->drawIndexedPrimitives(MTL::PrimitiveTypeTriangle, 3, MTL::IndexTypeUInt16, triangleMesh.indexBuffer, 0, boidManager->kCount);
      
     encoder->endEncoding();
     commandBuffer->presentDrawable(drawable);

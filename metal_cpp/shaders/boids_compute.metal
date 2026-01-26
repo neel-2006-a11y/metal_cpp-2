@@ -12,6 +12,7 @@ struct Boid
 {
     float2 position;
     float2 velocity;
+    float3 color;
 };
 
 struct SimParams {
@@ -27,11 +28,11 @@ struct SimParams {
 };
 
 constant float perceptionRadius = 0.3f;
-constant float seperationRadius = 0.002f;
+constant float seperationRadius = 0.02f;
 
 constant float sepWeight = 0.6f;
-constant float aliWeight = 0.8f;
-constant float cohWeight = 0.8f;
+constant float aliWeight = 1.3f;
+constant float cohWeight = 1.3f;
 
 constant float maxSpeed = 0.3f;
 
@@ -111,14 +112,14 @@ kernel void updateBoids(
         boidsOut[id] = self;
 }
 
-#define MAX_BOIDS_PER_CELL 64
+#define MAX_BOIDS_PER_CELL 128
 struct Cell{
     atomic_uint count;
     uint32_t indices[MAX_BOIDS_PER_CELL];
 };
 
 kernel void updateBoids_grid(
-    device const Boid* boidsIn [[buffer(0)]],
+    device Boid* boidsIn [[buffer(0)]],
     device Boid* boidsOut [[buffer(1)]],
     constant SimParams& params [[buffer(2)]],
     device Cell* grid [[buffer(3)]],
@@ -151,7 +152,6 @@ kernel void updateBoids_grid(
             uint cellIndex = nc.y * gridDim + nc.x;
             device Cell* cellData = &grid[cellIndex];
             uint n = atomic_load_explicit(&(cellData->count), memory_order_relaxed);
-            count += n;
             
             for(uint j = 0; j < n; j++){
                 uint otherID = cellData->indices[j];
@@ -159,14 +159,21 @@ kernel void updateBoids_grid(
                 
                 
                 Boid other = boidsIn[otherID];
+                if(id==1){
+                    boidsOut[otherID].color = float3(0.0,0.0,1.0); // blue // in the grid with boid 1
+                    boidsIn[otherID].color = float3(0.0,0.0,1.0);
+                }
                 float2 diff = other.position - self.position;
                 float dist = length(diff);
                 
-                alignment += other.velocity;
-                cohesion += other.position;
-                
-                if(dist < seperationRadius){
-                    seperation -= diff/dist;
+                if(dist < perceptionRadius && dist > 0.000001){
+                    count++;
+                    alignment += other.velocity;
+                    cohesion += other.position;
+                    
+                    if(dist < seperationRadius){
+                        seperation -= diff/dist;
+                    }
                 }
 
             }
@@ -216,7 +223,9 @@ kernel void updateBoids_grid(
     if (self.position.y > 1) self.position.y = -1;
     if (self.position.y < -1) self.position.y = 1;
 
+    
     boidsOut[id] = self;
+    
 }
 
 kernel void clearGrid(
@@ -229,12 +238,13 @@ kernel void clearGrid(
 }
 
 kernel void insertBoids(
-                        device const Boid* boids [[buffer(0)]],
+                        device Boid* boids [[buffer(0)]],
                         device Cell* grid [[buffer(1)]],
                         constant float& cellSize [[buffer(2)]],
                         constant uint32_t& gridDim [[buffer(3)]],
                         uint id [[thread_position_in_grid]]
                         ){
+    boids[id].color = float3(1.0,0.0,0.0); //red // not assigned to grid
     uint2 c = uint2(
                     clamp((boids[id].position.x+1)/cellSize, 0.0, float(gridDim-1)),
                     clamp((boids[id].position.y+1)/cellSize, 0.0, float(gridDim-1))
@@ -243,6 +253,8 @@ kernel void insertBoids(
     uint index = c.y * gridDim + c.x;
     
     uint slot = atomic_fetch_add_explicit(&grid[index].count, 1, memory_order_relaxed);
-    if(slot < MAX_BOIDS_PER_CELL)
+    if(slot < MAX_BOIDS_PER_CELL){
+        boids[id].color = float3(0.0,1.0,0.0); //green // assigned to a grid
         grid[index].indices[slot] = id;
+    }
 }

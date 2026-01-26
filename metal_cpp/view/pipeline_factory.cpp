@@ -30,7 +30,7 @@ void PipelineBuilder::set_vertex_descriptor(MTL::VertexDescriptor *descriptor){
     if(this->vertexDescriptor){
         this->vertexDescriptor->release();
     }
-    this->vertexDescriptor = descriptor;
+    this->vertexDescriptor = descriptor->retain();
 }
 
 MTL::RenderPipelineState* PipelineBuilder::build(){
@@ -64,29 +64,19 @@ MTL::RenderPipelineState* PipelineBuilder::build(){
     pipelineDescriptor->setVertexFunction(vertexMain);
     pipelineDescriptor->setFragmentFunction(fragmentMain);
     pipelineDescriptor->colorAttachments()->object(0)->setPixelFormat(MTL::PixelFormat::PixelFormatBGRA8Unorm_sRGB);
-    
-    MTL::VertexDescriptor* vertexDescriptor = MTL::VertexDescriptor::alloc()->init();
-    auto attributes = vertexDescriptor->attributes();
-    //position: vec2
-    auto positionDescriptor = attributes->object(0);
-    positionDescriptor->setFormat(MTL::VertexFormat::VertexFormatFloat2);
-    positionDescriptor->setBufferIndex(0);
-    positionDescriptor->setOffset(0);
-    //color: vec3
-    auto colorDescriptor = attributes->object(1);
-    colorDescriptor->setFormat(MTL::VertexFormat::VertexFormatFloat3);
-    colorDescriptor->setBufferIndex(0);
-    colorDescriptor->setOffset(offsetof(Vertex, color));
-
-    auto layoutDescriptor = vertexDescriptor->layouts()->object(0);
-    layoutDescriptor->setStride(sizeof(Vertex));
-    
     pipelineDescriptor->setVertexDescriptor(vertexDescriptor);
     
     MTL::RenderPipelineState* pipeline = device->newRenderPipelineState(pipelineDescriptor, &error);
     if (!pipeline) {
         std::cout << error->localizedDescription()->utf8String() << std::endl;
     }
+    
+    if (error) {
+        std::cout << "Pipeline warning: "
+                  << error->localizedDescription()->utf8String()
+                  << std::endl;
+    }
+
     
     vertexMain->release();
     fragmentMain->release();

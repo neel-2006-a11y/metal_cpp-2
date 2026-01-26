@@ -19,3 +19,5 @@ struct Vertex {
     simd::float2 pos;
     simd::float3 color;
 };
+
+static uint BoidVersion = 2;

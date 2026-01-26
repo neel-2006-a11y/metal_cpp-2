@@ -17,6 +17,7 @@ struct Boid
 {
     simd::float2 position;
     simd::float2 velocity;
+    simd::float3 color;
 };
 
 struct SimParams {
@@ -31,13 +32,21 @@ struct SimParams {
     float dt;
 };
 
+struct gridParams{
+    float cellSize;
+    uint32_t gridDim;
+    uint32_t numCells;
+    uint32_t numBoids;
+};
+
 struct FlowField {
     float angle = 0.0f;
     float angularVelocity = 0.0f;
 };
 
-#define MAX_BOIDS_PER_CELL 64
+#define MAX_BOIDS_PER_CELL 128
 struct Cell {
     uint32_t count;
     uint32_t indices[MAX_BOIDS_PER_CELL];
 };
+

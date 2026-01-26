@@ -14,6 +14,6 @@ struct Mesh {
 };
 
 namespace MeshFactory {
-    MTL::Buffer* buildTriangle(MTL::Device* device);
+    Mesh buildTriangle(MTL::Device* device);
     Mesh buildQuad(MTL::Device* device);
 }

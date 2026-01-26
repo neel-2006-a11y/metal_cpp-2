@@ -33,10 +33,9 @@ class Renderer
         BoidManager* boidManager;
     
     
-        MTL::Buffer* triangleMesh;
+        Mesh triangleMesh;
         Mesh quadMesh;
     
         //debug
         bool first_frame = true;
-        int parity = 0;
 };

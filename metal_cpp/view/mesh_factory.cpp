@@ -7,8 +7,9 @@
 
 #include "view/mesh_factory.h"
 
-MTL::Buffer* MeshFactory::buildTriangle(MTL::Device* device) {
+Mesh MeshFactory::buildTriangle(MTL::Device* device) {
     
+    Mesh mesh;
     //Declare the data to send
     Vertex vertices[3] = {
         {{-0.75, -0.75}, {1.0, 0.0, 0.0}},
@@ -16,14 +17,37 @@ MTL::Buffer* MeshFactory::buildTriangle(MTL::Device* device) {
         {{  -0.75,  0.75}, {0.0, 0.0, 1.0}}
     };
     
-    //Create a buffer to hold it
-    MTL::Buffer* buffer = device->newBuffer(3 * sizeof(Vertex), MTL::ResourceStorageModeShared);
+    ushort indices[3] = {0,1,2};
     
-    //Upload to buffer
-    // contents returns raw pointer to, well, contents
-    memcpy(buffer->contents(), vertices, 3 * sizeof(Vertex));
+    //vertex buffer
+    mesh.vertexBuffer = device->newBuffer(3 * sizeof(Vertex), MTL::ResourceStorageModeShared);
+    memcpy(mesh.vertexBuffer->contents(), vertices, 3 * sizeof(Vertex));
     
-    return buffer;
+    //index buffer
+    mesh.indexBuffer = device->newBuffer(3 * sizeof(ushort), MTL::ResourceStorageModeShared);
+    memcpy(mesh.indexBuffer->contents(), indices, 3 * sizeof(ushort));
+    
+    // vertex descriptor
+    MTL::VertexDescriptor* vertexDescriptor = MTL::VertexDescriptor::alloc()->init();
+    auto attributes = vertexDescriptor->attributes();
+    //position: vec2
+    auto positionDescriptor = attributes->object(0);
+    positionDescriptor->setFormat(MTL::VertexFormat::VertexFormatFloat2);
+    positionDescriptor->setBufferIndex(0);
+    positionDescriptor->setOffset(0);
+    // color: vec3
+    auto colorDescriptor = attributes->object(1);
+        colorDescriptor->setFormat(MTL::VertexFormat::VertexFormatFloat3);
+        colorDescriptor->setBufferIndex(0);
+        colorDescriptor->setOffset(offsetof(Vertex, color));
+    
+    auto layoutDescriptor = vertexDescriptor->layouts()->object(0);
+    layoutDescriptor->setStride(sizeof(Vertex));
+    
+    mesh.vertexDescriptor = vertexDescriptor;
+    
+    
+    return mesh;
 }
 
 Mesh MeshFactory::buildQuad(MTL::Device* device) {
