@@ -20,4 +20,24 @@ struct Vertex {
     simd::float3 color;
 };
 
+struct Vertex3D{
+    simd::float3 position;
+    simd::float3 color;
+    simd::float2 uv;
+    simd::float3 normal;
+};
+
+struct CameraUniforms{
+    simd::float4x4 view;
+    simd::float4x4 proj;
+    simd::float4x4 viewProj;
+};
+
+struct ObjectUniforms{
+    simd::float4x4 model;
+    simd::float4x4 invModel;
+    simd::float3 scale;
+};
+
+
 static uint BoidVersion = 2;

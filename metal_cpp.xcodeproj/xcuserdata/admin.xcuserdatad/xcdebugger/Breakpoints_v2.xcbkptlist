@@ -23,16 +23,16 @@
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
-            uuid = "6B5AB6CD-0279-421A-9918-71A946B0D40A"
+            uuid = "3A788E47-36DB-4159-B6EF-6704439AC93D"
             shouldBeEnabled = "No"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             filePath = "metal_cpp/view/renderer.cpp"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "105"
-            endingLineNumber = "105"
-            landmarkName = "Renderer::DrawFrame()"
+            startingLineNumber = "89"
+            endingLineNumber = "89"
+            landmarkName = "Renderer::Resize()"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>

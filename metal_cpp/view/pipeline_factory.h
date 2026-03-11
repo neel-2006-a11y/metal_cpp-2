@@ -22,10 +22,14 @@ public:
     
     void set_vertex_descriptor(MTL::VertexDescriptor* descriptor);
     
+    void set_depth_pixel_format(MTL::PixelFormat format);
+    void set_color_pixel_format(MTL::PixelFormat format);
+    
     MTL::RenderPipelineState* build();
     
 private:
     const char* filename, *vertEntryPoint, *fragEntryPoint;
     MTL::VertexDescriptor* vertexDescriptor = nullptr;
+    MTL::PixelFormat depthFormat, colorFormat;
     MTL::Device* device;
 };

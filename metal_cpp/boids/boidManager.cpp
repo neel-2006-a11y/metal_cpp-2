@@ -7,12 +7,26 @@
 
 #include "boids/boidManager.h"
 #include "config.h"
+#include "mtlm.h"
+#include "view/pipeline_factory.h"
 #include <random>
 #include <iostream>
 
 BoidManager::BoidManager(MTL::Device* device, MTL::CommandQueue* commandQueue, GLFWwindow* glfwWindow): device(device), commandQueue(commandQueue), glfwWindow(glfwWindow) {
     
     gridDim = 2.0 / cellSize;
+    triangleMesh = MeshFactory::buildTriangle(device);
+    
+    PipelineBuilder* builder = new PipelineBuilder(device);
+    
+    builder->set_filename("shaders/boids_render.metal");
+    builder->set_vertex_descriptor(triangleMesh.vertexDescriptor);
+    builder->set_vertex_entry_point("vertexMainBoid");
+    builder->set_fragment_entry_point("fragmentMainBoid");
+    boidRenderPipeline = builder->build();
+    
+    delete builder;
+    
     if(BoidVersion == 1){
         buildComputePipeline();
         buildBuffers();
@@ -387,8 +401,8 @@ void BoidManager::update_grid_2(){
             std::cos(flow.angle),
             std::sin(flow.angle)
         };
-//        simParams.flowStrength = 0.0007f;
-        simParams.flowStrength = 0.00f;
+        simParams.flowStrength = 0.07f;
+//        simParams.flowStrength = 0.00f;
         enc->setBytes(&simParams, sizeof(SimParams), 2);
         enc->setBuffer(cellIndicesBuffer, 0, 3);
         enc->setBuffer(cellStartBuffer, 0, 4);
@@ -408,7 +422,7 @@ void BoidManager::update_grid_2(){
 
 void BoidManager::updateFlow(FlowField& f, float dt){
     static std::mt19937 rng(std::random_device{}());
-    static std::normal_distribution<float> noise(0.0f, 10.0f);
+    static std::normal_distribution<float> noise(0.0f, 100.0f);
 
     // Slowly varying angular acceleration
     f.angularVelocity += noise(rng) * dt;
@@ -418,3 +432,49 @@ void BoidManager::updateFlow(FlowField& f, float dt){
 }
 
 
+void BoidManager::renderBoids(CA::MetalDrawable* drawable){
+    NS::AutoreleasePool* pool = NS::AutoreleasePool::alloc()->init();
+    
+    if(!drawable)return;
+    
+    MTL::CommandBuffer* commandBuffer = commandQueue->commandBuffer();
+    
+    if(BoidVersion == 1)
+        update_grid();
+    else if (BoidVersion == 2)
+        update_grid_2();
+    
+    
+    MTL::RenderPassDescriptor* rpDesc = MTL::RenderPassDescriptor::alloc()->init();
+    rpDesc->colorAttachments()->object(0)->setTexture(drawable->texture());
+    rpDesc->colorAttachments()->object(0)->setLoadAction(MTL::LoadActionClear);
+    rpDesc->colorAttachments()->object(0)->setStoreAction(
+            MTL::StoreActionStore);
+        rpDesc->colorAttachments()->object(0)->setClearColor(
+            MTL::ClearColor(0.1, 0.1, 0.15, 1.0));
+    
+    MTL::RenderCommandEncoder* encoder = commandBuffer->renderCommandEncoder(rpDesc);
+    
+    
+    encoder->setRenderPipelineState(boidRenderPipeline);
+    simd::float4x4 transform = mtlm::scale(0.005);
+    encoder->setVertexBytes(&transform, sizeof(simd::float4x4), 1);
+    encoder->setVertexBuffer(triangleMesh.vertexBuffer, 0, 0);
+    if(BoidVersion == 1)
+        if(parity == 0)
+            encoder->setVertexBuffer(boidOut, 0, 2);
+        else
+            encoder->setVertexBuffer(boidIn, 0, 2);
+    else
+        if(parity == 0)
+            encoder->setVertexBuffer(boidOut_2, 0, 2);
+        else
+            encoder->setVertexBuffer(boidIn_2, 0, 2);
+
+    encoder->drawIndexedPrimitives(MTL::PrimitiveTypeTriangle, 3, MTL::IndexTypeUInt16, triangleMesh.indexBuffer, 0, kCount);
+     
+    encoder->endEncoding();
+    commandBuffer->presentDrawable(drawable);
+    commandBuffer->commit();
+    pool->release();
+}

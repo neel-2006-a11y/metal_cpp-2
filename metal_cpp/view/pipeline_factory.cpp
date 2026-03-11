@@ -33,6 +33,13 @@ void PipelineBuilder::set_vertex_descriptor(MTL::VertexDescriptor *descriptor){
     this->vertexDescriptor = descriptor->retain();
 }
 
+void PipelineBuilder::set_depth_pixel_format(MTL::PixelFormat format){
+    depthFormat = format;
+}
+
+void PipelineBuilder::set_color_pixel_format(MTL::PixelFormat format){
+    colorFormat = format;
+}
 MTL::RenderPipelineState* PipelineBuilder::build(){
     //Read the source code from the file.
     std::ifstream file;
@@ -56,15 +63,21 @@ MTL::RenderPipelineState* PipelineBuilder::build(){
         vertEntryPoint, NS::StringEncoding::UTF8StringEncoding);
     MTL::Function* vertexMain = library->newFunction(vertexName);
     
-    NS::String* fragmentName = NS::String::string(
-        fragEntryPoint, NS::StringEncoding::UTF8StringEncoding);
-    MTL::Function* fragmentMain = library->newFunction(fragmentName);
+    MTL::Function* fragmentMain = nullptr;
+    if(fragEntryPoint){
+        NS::String* fragmentName = NS::String::string(
+                                                      fragEntryPoint, NS::StringEncoding::UTF8StringEncoding);
+        fragmentMain = library->newFunction(fragmentName);
+    }
     
     MTL::RenderPipelineDescriptor* pipelineDescriptor = MTL::RenderPipelineDescriptor::alloc()->init();
     pipelineDescriptor->setVertexFunction(vertexMain);
-    pipelineDescriptor->setFragmentFunction(fragmentMain);
-    pipelineDescriptor->colorAttachments()->object(0)->setPixelFormat(MTL::PixelFormat::PixelFormatBGRA8Unorm_sRGB);
+    if(fragmentMain)
+        pipelineDescriptor->setFragmentFunction(fragmentMain);
+    pipelineDescriptor->colorAttachments()->object(0)->setPixelFormat(colorFormat);
     pipelineDescriptor->setVertexDescriptor(vertexDescriptor);
+    pipelineDescriptor->setDepthAttachmentPixelFormat(depthFormat);
+
     
     MTL::RenderPipelineState* pipeline = device->newRenderPipelineState(pipelineDescriptor, &error);
     if (!pipeline) {
@@ -79,7 +92,8 @@ MTL::RenderPipelineState* PipelineBuilder::build(){
 
     
     vertexMain->release();
-    fragmentMain->release();
+    if(fragmentMain)
+        fragmentMain->release();
     pipelineDescriptor->release();
     library->release();
     file.close();
