@@ -27,6 +27,7 @@ private:
     void buildMeshes();
     void buildShaders();
     void updateMouse();
+    void loadTextures();
 
     // Core
     MTL::Device* device = nullptr;
@@ -41,11 +42,10 @@ private:
     MTL::RenderPassDescriptor* shadowPassDesc = nullptr;
     
     // Pipelines
-    MTL::RenderPipelineState *generalPipeline;
-    MTL::RenderPipelineState *shadowPipeline;
+    MTL::RenderPipelineState *generalPipeline, *shadowPipeline, *ditherPipeline;
 
     // Meshes
-    Mesh triangleMesh, quadMesh, cubeMesh, sphereMesh;
+    Mesh triangleMesh, quadMesh, cubeMesh, sphereMesh, curtainMesh;
 
     // camera
     Camera* camera = nullptr;
@@ -68,12 +68,11 @@ private:
     bool TAB_WAS_DOWN = false;
     
     // dithering
-    float BayerTransitions[4][8][8];
-    
-    float sphereScale = 20.0;
-    float cubeScale = 4.0;
-    
-    simd::float3 BayerScale = simd::float3(128.0); // 128
+    float sphereScale = 2.0;
+    float cubeScale = 2.0;
+    simd::float3 BayerScale = simd::float3(0.15); // 128
+    MTL::Texture* halftoneArray = nullptr;
+    MTL::SamplerState* ditherSampler = nullptr;
     
     //debug
     bool first_frame = true;

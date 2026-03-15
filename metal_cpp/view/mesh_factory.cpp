@@ -159,99 +159,121 @@ Mesh MeshFactory::buildQuad(MTL::Device* device) {
     return mesh;
 }
 
-Mesh MeshFactory::buildCube(MTL::Device *device){
+Mesh MeshFactory::buildCube(MTL::Device *device, simd::float3 scale){
     Mesh mesh;
-    
+
     simd::float3 positions[] = {
-            // Front
-            {-0.5, -0.5,  0.5}, { 0.5, -0.5,  0.5}, { 0.5,  0.5,  0.5}, { -0.5,  0.5,  0.5},
-            // Back
-            {-0.5, -0.5, -0.5}, { 0.5, -0.5, -0.5}, { 0.5,  0.5, -0.5}, { -0.5,  0.5, -0.5}
-        };
+        // Front
+        {-0.5, -0.5,  0.5}, { 0.5, -0.5,  0.5}, { 0.5,  0.5,  0.5}, { -0.5,  0.5,  0.5},
+        // Back
+        {-0.5, -0.5, -0.5}, { 0.5, -0.5, -0.5}, { 0.5,  0.5, -0.5}, { -0.5,  0.5, -0.5}
+    };
+
     simd::float3 normals[] = {
-            {0, 0, 1}, {0, 0, -1}, {1, 0, 0},
-            {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}
-        };
-    simd::float2 uvs[] = {
-            {0.0f, 0.0f}, {1.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f}
-        };
+        {0, 0, 1}, {0, 0, -1}, {1, 0, 0},
+        {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}
+    };
+
     simd::float3 colors[] = {
-            {1, 0, 0}, {0, 1, 0}, {0, 0, 1}, {1, 1, 0},
-            {1, 0, 1}, {0, 1, 1}
-        };
+        {1,0,0}, {0,1,0}, {0,0,1},
+        {1,1,0}, {1,0,1}, {0,1,1}
+    };
+
     struct Face {
-            int v[4];
-            simd::float3 n;
-            simd::float3 c;
-        };
+        int v[4];
+        simd::float3 n;
+        simd::float3 c;
+        simd::float2 uvScale;
+    };
 
     Face faces[] = {
-        {{0, 1, 2, 3}, normals[0], colors[0]}, // front
-        {{5, 4, 7, 6}, normals[1], colors[1]}, // back
-        {{1, 5, 6, 2}, normals[2], colors[2]}, // right
-        {{4, 0, 3, 7}, normals[3], colors[3]}, // left
-        {{3, 2, 6, 7}, normals[4], colors[4]}, // top
-        {{4, 5, 1, 0}, normals[5], colors[5]}  // bottom
+        {{0,1,2,3}, normals[0], colors[0], {scale.x, scale.y}}, // front
+        {{5,4,7,6}, normals[1], colors[1], {scale.x, scale.y}}, // back
+        {{1,5,6,2}, normals[2], colors[2], {scale.z, scale.y}}, // right
+        {{4,0,3,7}, normals[3], colors[3], {scale.z, scale.y}}, // left
+        {{3,2,6,7}, normals[4], colors[4], {scale.x, scale.z}}, // top
+        {{4,5,1,0}, normals[5], colors[5], {scale.x, scale.z}}  // bottom
     };
-    
+
     std::vector<Vertex3D> vertices;
-    for (auto& f : faces) {
-        for (int i = 0; i < 4; i++) {
+
+    for(auto& f : faces){
+        simd::float2 uvs[4] = {
+            {0.0f, 0.0f},
+            {f.uvScale.x, 0.0f},
+            {f.uvScale.x, f.uvScale.y},
+            {0.0f, f.uvScale.y}
+        };
+
+        for(int i=0;i<4;i++){
             Vertex3D v;
-            v.position = positions[f.v[i]];
+            v.position = positions[f.v[i]] * scale;
             v.normal = f.n;
             v.color = f.c;
             v.uv = uvs[i];
             vertices.push_back(v);
         }
     }
-    
+
     std::vector<ushort> indices;
-    for (ushort i = 0; i < 6; i++) {
-        ushort start = i * ushort(4);
-        indices.insert(indices.end(), {
-            start, static_cast<unsigned short>(start + 1), static_cast<unsigned short>(start + 2),
-            start, static_cast<unsigned short>(start + 2), static_cast<unsigned short>(start + 3)
+
+    for(ushort i=0;i<6;i++){
+        ushort start = i * 4;
+
+        indices.insert(indices.end(),{
+            start, static_cast<unsigned short>(start+ushort(1)), static_cast<unsigned short>(start+ushort(2)),
+            start, static_cast<unsigned short>(start+ushort(2)), static_cast<unsigned short>(start+ushort(3))
         });
     }
+
     mesh.indexCount = 36;
-    
-    //vertex buffer
-    mesh.vertexBuffer = device->newBuffer(24 * sizeof(Vertex3D), MTL::ResourceStorageModeShared);
-    memcpy(mesh.vertexBuffer->contents(), vertices.data(), 24 * sizeof(Vertex3D));
-    
-    //index buffer
-    mesh.indexBuffer = device->newBuffer(36 * sizeof(ushort), MTL::ResourceStorageModeShared);
-    memcpy(mesh.indexBuffer->contents(), indices.data(), 36 * sizeof(ushort));
-    
-    // vertex descriptor
-    MTL::VertexDescriptor* vertexDescriptor = MTL::VertexDescriptor::alloc()->init();
+
+    mesh.vertexBuffer = device->newBuffer(
+        vertices.size()*sizeof(Vertex3D),
+        MTL::ResourceStorageModeShared);
+
+    memcpy(mesh.vertexBuffer->contents(),
+           vertices.data(),
+           vertices.size()*sizeof(Vertex3D));
+
+    mesh.indexBuffer = device->newBuffer(
+        indices.size()*sizeof(ushort),
+        MTL::ResourceStorageModeShared);
+
+    memcpy(mesh.indexBuffer->contents(),
+           indices.data(),
+           indices.size()*sizeof(ushort));
+
+    MTL::VertexDescriptor* vertexDescriptor =
+        MTL::VertexDescriptor::alloc()->init();
+
     auto attributes = vertexDescriptor->attributes();
-    //position: vec3
+
     auto positionDescriptor = attributes->object(0);
-    positionDescriptor->setFormat(MTL::VertexFormat::VertexFormatFloat3);
+    positionDescriptor->setFormat(MTL::VertexFormatFloat3);
     positionDescriptor->setBufferIndex(0);
-    positionDescriptor->setOffset(0);
-    // color: vec3
+    positionDescriptor->setOffset(offsetof(Vertex3D, position));
+
     auto colorDescriptor = attributes->object(1);
-        colorDescriptor->setFormat(MTL::VertexFormat::VertexFormatFloat3);
-        colorDescriptor->setBufferIndex(0);
-        colorDescriptor->setOffset(offsetof(Vertex3D, color));
-    // uv: vec2
+    colorDescriptor->setFormat(MTL::VertexFormatFloat3);
+    colorDescriptor->setBufferIndex(0);
+    colorDescriptor->setOffset(offsetof(Vertex3D, color));
+
     auto uvDescriptor = attributes->object(2);
-        uvDescriptor->setFormat(MTL::VertexFormat::VertexFormatFloat2);
-        uvDescriptor->setBufferIndex(0);
-        uvDescriptor->setOffset(offsetof(Vertex3D, uv));
-    // normal: vec3
+    uvDescriptor->setFormat(MTL::VertexFormatFloat2);
+    uvDescriptor->setBufferIndex(0);
+    uvDescriptor->setOffset(offsetof(Vertex3D, uv));
+
     auto normalDescriptor = attributes->object(3);
-        normalDescriptor->setFormat(MTL::VertexFormat::VertexFormatFloat3);
-        normalDescriptor->setBufferIndex(0);
-        normalDescriptor->setOffset(offsetof(Vertex3D, normal));
-    
+    normalDescriptor->setFormat(MTL::VertexFormatFloat3);
+    normalDescriptor->setBufferIndex(0);
+    normalDescriptor->setOffset(offsetof(Vertex3D, normal));
+
     auto layoutDescriptor = vertexDescriptor->layouts()->object(0);
     layoutDescriptor->setStride(sizeof(Vertex3D));
-    
+
     mesh.vertexDescriptor = vertexDescriptor;
+
     return mesh;
 }
 

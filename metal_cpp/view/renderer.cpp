@@ -12,6 +12,10 @@
 #include "config.h"
 #include "view/directional_light.h"
 #include "view/dithering.h"
+#include "view/texture_generator.h"
+
+#include <fstream>
+#include <vector>
 
 Renderer::Renderer(MTL::Device* device, CA::MetalLayer* layer, GLFWwindow* glfwWindow):
 device(device->retain()), metalLayer(layer->retain()), glfwWindow(glfwWindow)
@@ -19,6 +23,7 @@ device(device->retain()), metalLayer(layer->retain()), glfwWindow(glfwWindow)
     commandQueue = device->newCommandQueue();
     buildMeshes();
     buildShaders();
+    loadTextures();
     
     // shadowMap
     MTL::TextureDescriptor* shadowDesc = MTL::TextureDescriptor::texture2DDescriptor(MTL::PixelFormatDepth32Float, 2048, 2048, false);
@@ -26,12 +31,23 @@ device(device->retain()), metalLayer(layer->retain()), glfwWindow(glfwWindow)
     
     shadowDesc->setStorageMode(MTL::StorageModePrivate);
     shadowMap = device->newTexture(shadowDesc);
+    // samplers
     MTL::SamplerDescriptor* sdesc = MTL::SamplerDescriptor::alloc()->init();
     sdesc->setMinFilter(MTL::SamplerMinMagFilterLinear);
     sdesc->setMagFilter(MTL::SamplerMinMagFilterLinear);
     sdesc->setCompareFunction(MTL::CompareFunctionNever);
     
     shadowSampler = device->newSamplerState(sdesc);
+    
+    
+    MTL::SamplerDescriptor* dither_desc = MTL::SamplerDescriptor::alloc()->init();
+    dither_desc->setMinFilter(MTL::SamplerMinMagFilterNearest);
+    dither_desc->setMagFilter(MTL::SamplerMinMagFilterNearest);
+    dither_desc->setMaxAnisotropy(1);
+    dither_desc->setMipFilter(MTL::SamplerMipFilterNotMipmapped);
+    
+
+    ditherSampler = device->newSamplerState(dither_desc);
     
     // depth state
     MTL::DepthStencilDescriptor* depthDesc = MTL::DepthStencilDescriptor::alloc()->init();
@@ -64,20 +80,6 @@ device(device->retain()), metalLayer(layer->retain()), glfwWindow(glfwWindow)
     std::cout << "Original camera ptr:" << camera << std::endl;
     Resize();
     mouseHandler = new MouseHandler(glfwWindow);
-    
-    // dithering
-    Bayer4x4Transitions(BayerTransitions);
-    for (int i=0; i<4; i++) {
-        for (int j=0; j<8; j++) {
-            for (int k=0; k<8; k++) {
-                std::cout << BayerTransitions[i][j][k] << " ";
-            }
-            std::cout << std::endl;
-        }
-        std::cout << std::endl;
-    }
-    std::cout << "Bayer matrices modified";
-    std::cout << std::endl;
 }
 
 
@@ -134,7 +136,8 @@ Renderer::~Renderer() {
 void Renderer::buildMeshes() {
     triangleMesh = MeshFactory::buildTriangle3D(device);
     quadMesh = MeshFactory::buildQuad(device);
-    cubeMesh = MeshFactory::buildCube(device);
+    cubeMesh = MeshFactory::buildCube(device, simd::float3{5.0,5.0,5.0});
+    curtainMesh = MeshFactory::buildCube(device, simd::float3{35.0,35.0,5.0});
     sphereMesh = MeshFactory::buildSphere(device, 16, 16, 1);
 }
 
@@ -152,12 +155,30 @@ void Renderer::buildShaders() {
     
     builder->set_filename("shaders/shadowMap.metal");
     builder->set_color_pixel_format(MTL::PixelFormatInvalid);
+    builder->set_depth_pixel_format(MTL::PixelFormatDepth32Float);
     builder->set_vertex_descriptor(cubeMesh.vertexDescriptor);
     builder->set_vertex_entry_point("shadowVertex");
     builder->set_fragment_entry_point(nullptr);
     shadowPipeline = builder->build();
     
+    builder->set_filename("shaders/dither_runevision.metal");
+    builder->set_color_pixel_format(MTL::PixelFormat::PixelFormatBGRA8Unorm_sRGB);
+    builder->set_depth_pixel_format(MTL::PixelFormatDepth32Float);
+    builder->set_vertex_descriptor(cubeMesh.vertexDescriptor);
+    builder->set_vertex_entry_point("vertexMain3D_dither");
+    builder->set_fragment_entry_point("fragmentMain3D_dither");
+    ditherPipeline = builder->build();
+    
     delete builder;
+}
+
+void Renderer::loadTextures(){
+    std::vector<Image> images;
+    for (int i=0; i<13; i++) {
+        std::string filename = "texture" + std::to_string(i) + ".ppm";
+        images.push_back(loadPPM(filename));
+    }
+    halftoneArray = createTextureArray(device, images);
 }
 
 void Renderer::DrawFrame() {
@@ -210,8 +231,8 @@ NS::AutoreleasePool* pool = NS::AutoreleasePool::alloc()->init();
     cube.mesh = &cubeMesh;
     cube.objectU.model = mtlm::identity();
     cube.objectU.model *= mtlm::translation({-5, 0, 15});
-    cube.objectU.scale = simd::float3{5.0,5.0,5.0};
-    cube.objectU.model *= mtlm::scale3D(cube.objectU.scale);
+//    cube.objectU.scale = simd::float3{5.0,5.0,5.0};
+//    cube.objectU.model *= mtlm::scale3D(cube.objectU.scale);
 //    cube.objectU.model *= mtlm::y_rotation(cubeAngle);
     cube.objectU.invModel = simd_inverse(cube.objectU.model);
     cube.objectU.scale *= cubeScale;
@@ -219,11 +240,11 @@ NS::AutoreleasePool* pool = NS::AutoreleasePool::alloc()->init();
     objects.push_back(&cube);
     
     Object curtain;
-    curtain.mesh = &cubeMesh;
+    curtain.mesh = &curtainMesh;
     curtain.objectU.model = mtlm::identity();
     curtain.objectU.model *= mtlm::translation({0, 0, 20});
-    curtain.objectU.scale = simd::float3{35.0,35.0,5.0};
-    curtain.objectU.model *= mtlm::scale3D(curtain.objectU.scale);
+//    curtain.objectU.scale = simd::float3{35.0,35.0,5.0};
+//    curtain.objectU.model *= mtlm::scale3D(curtain.objectU.scale);
     curtain.objectU.invModel = simd_inverse(curtain.objectU.model);
     curtain.objectU.scale *= cubeScale;
     objects.push_back(&curtain);
@@ -239,7 +260,9 @@ NS::AutoreleasePool* pool = NS::AutoreleasePool::alloc()->init();
     objects.push_back(&sphere);
     
     
-    sun.direction = { 0.3f, 0.3f, 1.0f };
+    sun.direction = { 1.0f, 0.3f, 1.0f };
+    simd::float4 dir4 = simd::float4{sun.direction.x, sun.direction.y, sun.direction.z, 1.0};
+    sun.direction = (mtlm::y_rotation(cubeAngle) * dir4).xyz;
     sun.color = { 1.0f, 0.95f, 0.85f };
     sun.intensity = 1.0f;
     
@@ -272,7 +295,7 @@ NS::AutoreleasePool* pool = NS::AutoreleasePool::alloc()->init();
     MTL::RenderCommandEncoder* encoder =
         commandBuffer->renderCommandEncoder(renderPassDesc);
 
-    encoder->setRenderPipelineState(generalPipeline);
+    encoder->setRenderPipelineState(ditherPipeline);
     encoder->setDepthStencilState(depthState);
     encoder->setFrontFacingWinding(MTL::WindingCounterClockwise);
 
@@ -284,10 +307,11 @@ NS::AutoreleasePool* pool = NS::AutoreleasePool::alloc()->init();
 
     encoder->setVertexBytes(&camU, sizeof(camU), 1);
     
-    // ---- dithering ----
-    encoder->setFragmentBytes(&BayerTransitions, 4*64*(sizeof(float)), 9);
+    // ---- pass dithering textures ----
+    encoder->setFragmentTexture(halftoneArray, 1);
+    encoder->setFragmentSamplerState(ditherSampler, 1);
     
-    // ---- light ----
+    // ---- pass light ----
     simple sSun;
     sSun.color = sun.color;
     sSun.direction = sun.direction;
@@ -297,14 +321,13 @@ NS::AutoreleasePool* pool = NS::AutoreleasePool::alloc()->init();
     auto camPosition = camera->position();
     encoder->setFragmentBytes(&camPosition, sizeof(simd::float3), 4);
     
-    // ----- shadowMap -----
+    // ----- pass shadowMap -----
     encoder->setFragmentTexture(shadowMap, 0);
     encoder->setFragmentSamplerState(shadowSampler, 0);
     
     for(auto o : objects){
         encoder->setVertexBuffer(o->mesh->vertexBuffer,0,0);
         encoder->setVertexBytes(&o->objectU, sizeof(ObjectUniforms), 2);
-//        simd::float3 tot_scale = BayerScale * o->objectU.scale;
         simd::float3 tot_scale = BayerScale;
         encoder->setFragmentBytes(&o->objectU.scale, sizeof(simd::float3), 7);
         encoder->setFragmentBytes(&tot_scale, sizeof(simd::float3), 8);

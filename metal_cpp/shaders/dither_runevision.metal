@@ -1,8 +1,8 @@
 //
-//  general3D.metal
+//  dither_runevision.metal
 //  metal_cpp
 //
-//  Created by Neel on 26/01/26.
+//  Created by Neel on 15/03/26.
 //
 
 #include <metal_stdlib>
@@ -42,7 +42,7 @@ struct DirectionalLight{
     float3 color;
 };
 
-float shadowCalculation(float3 worldPos, texture2d<float> shadowMap, sampler shadowSampler, float4x4 lightVP){
+float shadowCalculation_dither(float3 worldPos, texture2d<float> shadowMap, sampler shadowSampler, float4x4 lightVP){
     float4 lightClip = lightVP * float4(worldPos, 1.0);
     float3 proj = lightClip.xyz / lightClip.w;
     
@@ -60,31 +60,9 @@ float shadowCalculation(float3 worldPos, texture2d<float> shadowMap, sampler sha
     return shadow;
 }
 
-float bayer4x4Sample(uint2 pixel, constant float4x4& bayer){
-    uint x = pixel.x & 3;
-    uint y = pixel.y & 3;
-    
-    return bayer[x][y] / 16.0;
-}
-
-float bayer8x8TransitionSample(uint2 pixel, constant float* bayer){
-    uint x = pixel.x & 7;
-    uint y = pixel.y & 7;
-    
-    return bayer[y*8+x] / 16.0;
-}
-
-float bayer4x4x4Sample(uint3 voxel, constant float* bayer){
-    uint x = voxel.x & 3;
-    uint y = voxel.y & 3;
-    uint z = voxel.z & 3;
-    
-    uint index = x + y*4 + z*16;
-    return bayer[index] / 64.0;
-}
 
 
-VertexOutput3D vertex vertexMain3D(VertexInput3D in [[stage_in]],
+VertexOutput3D vertex vertexMain3D_dither(VertexInput3D in [[stage_in]],
                                    constant CameraUniforms& cameraUniforms[[buffer(1)]],
                                    constant ObjectUniforms& objectuniforms[[buffer(2)]]
                                    ){
@@ -99,7 +77,7 @@ VertexOutput3D vertex vertexMain3D(VertexInput3D in [[stage_in]],
     return out;
 }
 
-float4 fragment fragmentMain3D(VertexOutput3D in [[stage_in]],
+float4 fragment fragmentMain3D_dither(VertexOutput3D in [[stage_in]],
                                texture2d<float> shadowMap [[texture(0)]],
                                sampler shadowSampler [[sampler(0)]],
                                constant DirectionalLight& sun [[buffer(3)]],
@@ -107,7 +85,8 @@ float4 fragment fragmentMain3D(VertexOutput3D in [[stage_in]],
                                constant float4x4& sunVP [[buffer(5)]],
                                constant float3& TileScale [[buffer(7)]],
                                constant float3& BayerScale [[buffer(8)]],
-                               constant float* BayerTransitions [[buffer(9)]]){
+                               texture2d_array<half> halftoneTex [[texture(1)]],
+                               sampler halftoneSampler [[sampler(1)]]){
     float3 N = normalize(in.normal);
     float3 V = normalize(cameraPos - in.worldPos);
 
@@ -118,7 +97,7 @@ float4 fragment fragmentMain3D(VertexOutput3D in [[stage_in]],
     float spec = pow(max(dot(N, H), 0.0), 64.0);
     spec = 0;
 
-    float shadow = shadowCalculation(in.worldPos, shadowMap, shadowSampler, sunVP);
+    float shadow = shadowCalculation_dither(in.worldPos, shadowMap, shadowSampler, sunVP);
     float3 color =
         sun.color * sun.intensity * diff +
         sun.color * spec * 0.2;
@@ -127,61 +106,53 @@ float4 fragment fragmentMain3D(VertexOutput3D in [[stage_in]],
     
     color += 0.05*float3(1.0); // ambient light
     
+    float luminance = dot(color, float3(0.299, 0.587, 0.114));
+    float luminance_max = dot(float3(1.0,1.0,1.0), float3(0.299, 0.587, 0.114));
+    luminance /= luminance_max;
+    
     // ----------------------------------------
-    // UV
+    // UV change
     float2 duvdx = dfdx(in.uv);
     float2 duvdy = dfdy(in.uv);
     
-    float MaxAdapt = 4096;
-    float MinAdapt = 256;
-    // rand (stable noise)
-    uint2 tile = uint2(floor(in.uv * MaxAdapt * BayerScale.x * 1.0 * TileScale.x/256));
-    float rand = fract(dot(float2(tile), float2(0.75487766, 0.56984029)));
+    float MaxAdapt = exp2(12.0f);
+    float MinAdapt = exp2(-2.0f);
     
     float pixelCoverage = max(length(duvdx), length(duvdy)) * TileScale.x;
-    float logScale = -log2(pixelCoverage);
-    float frac = fract(logScale);
-    float snapped = floor(logScale + (rand-0.5) * 0.02);// 0.02
-    if(rand>0.9)snapped++;
-//    float adaptiveScale = exp2(snapped) * BayerScale.x / (TileScale.x);
-    float adaptiveScale = exp2(snapped) * BayerScale.x;
-    adaptiveScale = clamp(adaptiveScale, MinAdapt, MaxAdapt);
+    float lum_bias = 0.2;
+    float scale = (BayerScale.x / pixelCoverage) * (luminance + lum_bias)/(1.0+lum_bias);
+    
+    scale = clamp(scale, MinAdapt, MaxAdapt);
+    float log_scale = log2(scale);
+    float lod = floor(log_scale);
+    float frac = fract(log_scale);
+    int transition = 13*frac;
+    
+    float adaptiveScale = exp2(lod);
+    
     
     
     // sample using tiled UV in BayerMatrix
-    uint2 tiledUV = uint2(in.uv * TileScale.x/256 * adaptiveScale);
+    float2 sampleUV = fract(in.uv * adaptiveScale);
     
+    float value = halftoneTex.sample(halftoneSampler, sampleUV, transition).r;
     
-    float randStrength = 0.05; // 0.05 // to prevent banding between transitions
-    float tileFrac = fract((1-randStrength)*frac + randStrength * rand);
+    float threshold = 1-(luminance) +0.01;
+    float dithered = value > threshold ? 1.0 : 0.0;
     
-    uint fracLvl = 0;
-    if(adaptiveScale == MaxAdapt){
-        fracLvl = 0;
-    }else if(adaptiveScale == MinAdapt){
-        fracLvl = 3;
-    }else{
-        int lvl1 = tileFrac / log2(1.25);
-        int lvl2 = tileFrac / log2(1.5);
-        int lvl3 = tileFrac / log2(1.75);
+    float out;
+    out = dithered;
+//    out = adaptiveScale == MinAdapt ? 1.0 : 0.0;
+//    out =  adaptiveScale / MaxAdapt;
+//    out = value;
+    
+    return float4(out, out, out, 1.0);
 
-        fracLvl = lvl1 = lvl2 + lvl3;
-    }
-    
-    
-    
-    float threshold = bayer8x8TransitionSample(tiledUV, BayerTransitions+64*fracLvl);
-    
-    
-    float luminance = dot(color, float3(0.299, 0.587, 0.114));
-    float dithered = luminance > threshold ? 1.0 : 0.0;
-    
-
-    
-//    float debug = adaptiveScale/1024.0;
+//    return float4(value, value, value, 1.0);
+//    float debug = clipped;
 //    return float4(debug, debug, debug, 1.0);
 //    return float4(dithered, tileFrac,0,1);
 //    return float4(in.objectPos.xyz, 1.0);
-    return float4(dithered, dithered, dithered, 1.0);
+//    return float4(dithered, dithered, dithered, 1.0);
 //    return float4(color, 1.0);
 }

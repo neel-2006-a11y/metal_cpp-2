@@ -44,6 +44,9 @@ MTL::RenderPipelineState* PipelineBuilder::build(){
     //Read the source code from the file.
     std::ifstream file;
     file.open(filename);
+    if(!file){
+        perror("file not found");
+    }
     std::stringstream reader;
     reader << file.rdbuf();
     std::string raw_string = reader.str();
