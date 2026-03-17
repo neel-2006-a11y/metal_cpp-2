@@ -25,12 +25,30 @@ device(device->retain()), metalLayer(layer->retain()), glfwWindow(glfwWindow)
     buildShaders();
     loadTextures();
     
+    // sun
+    sun.direction = { 1.0f, 0.3f, 1.0f };
+    sun.color = { 1.0f, 0.95f, 0.85f };
+    sun.intensity = 1.0f;
+    sun.cascades = 4;
+    
     // shadowMap
-    MTL::TextureDescriptor* shadowDesc = MTL::TextureDescriptor::texture2DDescriptor(MTL::PixelFormatDepth32Float, 2048, 2048, false);
+    MTL::TextureDescriptor* shadowCSMDesc = MTL::TextureDescriptor::alloc()->init();
+    shadowCSMDesc->setTextureType(MTL::TextureType2DArray);
+    shadowCSMDesc->setPixelFormat(MTL::PixelFormatDepth32Float);
+    shadowCSMDesc->setWidth(shadowRes);
+    shadowCSMDesc->setHeight(shadowRes);
+    shadowCSMDesc->setArrayLength(sun.cascades);
+    shadowCSMDesc->setUsage(MTL::TextureUsageRenderTarget | MTL::TextureUsageShaderRead);
+    
+    shadowMapCSM = device->newTexture(shadowCSMDesc);
+    
+    
+    MTL::TextureDescriptor* shadowDesc = MTL::TextureDescriptor::texture2DDescriptor(MTL::PixelFormatDepth32Float, shadowRes, shadowRes, false);
     shadowDesc->setUsage(MTL::TextureUsageRenderTarget | MTL::TextureUsageShaderRead);
     
     shadowDesc->setStorageMode(MTL::StorageModePrivate);
     shadowMap = device->newTexture(shadowDesc);
+    
     // samplers
     MTL::SamplerDescriptor* sdesc = MTL::SamplerDescriptor::alloc()->init();
     sdesc->setMinFilter(MTL::SamplerMinMagFilterLinear);
@@ -60,9 +78,12 @@ device(device->retain()), metalLayer(layer->retain()), glfwWindow(glfwWindow)
     renderPassDesc = MTL::RenderPassDescriptor::alloc()->init();
     shadowPassDesc = MTL::RenderPassDescriptor::alloc()->init();
     
+    // renderPassDesc Depth Attachment
+    renderPassDesc->depthAttachment()->setLoadAction(MTL::LoadActionClear);
+    renderPassDesc->depthAttachment()->setStoreAction(MTL::StoreActionStore);
+    renderPassDesc->depthAttachment()->setClearDepth(1.0);
     
     // shadowPassDesc Depth Attachment
-    shadowPassDesc->depthAttachment()->setTexture(shadowMap);
     shadowPassDesc->depthAttachment()->setLoadAction(MTL::LoadActionClear);
     shadowPassDesc->depthAttachment()->setStoreAction(MTL::StoreActionStore);
     shadowPassDesc->depthAttachment()->setClearDepth(1.0);
@@ -112,25 +133,28 @@ void Renderer::Resize(){
 
 Renderer::~Renderer() {
     cubeMesh.vertexBuffer->release();
-        cubeMesh.indexBuffer->release();
-        cubeMesh.vertexDescriptor->release();
+    cubeMesh.indexBuffer->release();
+    cubeMesh.vertexDescriptor->release();
 
-        quadMesh.vertexBuffer->release();
-        quadMesh.indexBuffer->release();
-        quadMesh.vertexDescriptor->release();
+    quadMesh.vertexBuffer->release();
+    quadMesh.indexBuffer->release();
+    quadMesh.vertexDescriptor->release();
 
-        triangleMesh.vertexBuffer->release();
-        triangleMesh.indexBuffer->release();
-        triangleMesh.vertexDescriptor->release();
+    triangleMesh.vertexBuffer->release();
+    triangleMesh.indexBuffer->release();
+    triangleMesh.vertexDescriptor->release();
 
-        depthTexture->release();
-        depthState->release();
-        renderPassDesc->release();
+    depthTexture->release();
+    depthState->release();
+    renderPassDesc->release();
+    shadowMap->release();
+    shadowMapCSM->release();
 
-        generalPipeline->release();
-        commandQueue->release();
-        metalLayer->release();
-        device->release();
+
+    generalPipeline->release();
+    commandQueue->release();
+    metalLayer->release();
+    device->release();
 }
 
 void Renderer::buildMeshes() {
@@ -231,8 +255,6 @@ NS::AutoreleasePool* pool = NS::AutoreleasePool::alloc()->init();
     cube.mesh = &cubeMesh;
     cube.objectU.model = mtlm::identity();
     cube.objectU.model *= mtlm::translation({-5, 0, 15});
-//    cube.objectU.scale = simd::float3{5.0,5.0,5.0};
-//    cube.objectU.model *= mtlm::scale3D(cube.objectU.scale);
 //    cube.objectU.model *= mtlm::y_rotation(cubeAngle);
     cube.objectU.invModel = simd_inverse(cube.objectU.model);
     cube.objectU.scale *= cubeScale;
@@ -243,8 +265,6 @@ NS::AutoreleasePool* pool = NS::AutoreleasePool::alloc()->init();
     curtain.mesh = &curtainMesh;
     curtain.objectU.model = mtlm::identity();
     curtain.objectU.model *= mtlm::translation({0, 0, 20});
-//    curtain.objectU.scale = simd::float3{35.0,35.0,5.0};
-//    curtain.objectU.model *= mtlm::scale3D(curtain.objectU.scale);
     curtain.objectU.invModel = simd_inverse(curtain.objectU.model);
     curtain.objectU.scale *= cubeScale;
     objects.push_back(&curtain);
@@ -260,29 +280,35 @@ NS::AutoreleasePool* pool = NS::AutoreleasePool::alloc()->init();
     objects.push_back(&sphere);
     
     
-    sun.direction = { 1.0f, 0.3f, 1.0f };
-    simd::float4 dir4 = simd::float4{sun.direction.x, sun.direction.y, sun.direction.z, 1.0};
-    sun.direction = (mtlm::y_rotation(cubeAngle) * dir4).xyz;
-    sun.color = { 1.0f, 0.95f, 0.85f };
-    sun.intensity = 1.0f;
+    
+    // update sun matrices
+    std::vector<float> cascadeSplits = camera->computeCascadeSplits(sun.cascades, 0.5);
+    std::vector<worldFrustrum> frusts = camera->computeCascadeFrustrums(cascadeSplits);
+    sun.fitCameraFrustrums(frusts);
     
     // render shadowMap
-    MTL::RenderCommandEncoder* shadowEnc = commandBuffer->renderCommandEncoder(shadowPassDesc);
-    shadowEnc->setRenderPipelineState(shadowPipeline);
-    shadowEnc->setDepthStencilState(depthState);
+    auto lightVPs = sun.ViewProj();
     
-    auto lightVP = sun.ViewProj();
-    
-    for(auto o : objects){
-        shadowEnc->setVertexBuffer(o->mesh->vertexBuffer, 0, 0);
-        shadowEnc->setVertexBytes(&lightVP, sizeof(simd::float4x4), 1);
-        shadowEnc->setVertexBytes(&o->objectU.model, sizeof(simd::float4x4), 2);
+    for(int i=0; i<sun.cascades; i++){
+        auto depthAttach = shadowPassDesc->depthAttachment();
+        depthAttach->setTexture(shadowMapCSM);
+        depthAttach->setLevel(0);
+        depthAttach->setSlice(i); // cascade
         
-        shadowEnc->drawIndexedPrimitives(MTL::PrimitiveTypeTriangle, o->mesh->indexCount, MTL::IndexTypeUInt16, o->mesh->indexBuffer, 0);
+        MTL::RenderCommandEncoder* shadowEnc = commandBuffer->renderCommandEncoder(shadowPassDesc);
+        shadowEnc->setRenderPipelineState(shadowPipeline);
+        shadowEnc->setDepthStencilState(depthState);
+        
+        for(auto o : objects){
+            shadowEnc->setVertexBuffer(o->mesh->vertexBuffer, 0, 0);
+            shadowEnc->setVertexBytes(&lightVPs[i], sizeof(simd::float4x4), 1);
+            shadowEnc->setVertexBytes(&o->objectU.model, sizeof(simd::float4x4), 2);
+            
+            shadowEnc->drawIndexedPrimitives(MTL::PrimitiveTypeTriangle, o->mesh->indexCount, MTL::IndexTypeUInt16, o->mesh->indexBuffer, 0);
+        }
+        
+        shadowEnc->endEncoding();
     }
-    
-    
-    shadowEnc->endEncoding();
     
     // render general
     // ---- Color attachment ----
@@ -317,13 +343,16 @@ NS::AutoreleasePool* pool = NS::AutoreleasePool::alloc()->init();
     sSun.direction = sun.direction;
     sSun.intensity = sun.intensity;
     encoder->setFragmentBytes(&sSun, sizeof(simple), 3);
-    encoder->setFragmentBytes(&lightVP, sizeof(simd::float4x4), 5);
+    encoder->setFragmentBytes(lightVPs.data(), sizeof(simd::float4x4) * sun.cascades, 5);
     auto camPosition = camera->position();
     encoder->setFragmentBytes(&camPosition, sizeof(simd::float3), 4);
     
     // ----- pass shadowMap -----
-    encoder->setFragmentTexture(shadowMap, 0);
+    encoder->setFragmentTexture(shadowMapCSM, 0);
     encoder->setFragmentSamplerState(shadowSampler, 0);
+    
+    // pass cascade splits
+    encoder->setFragmentBytes(cascadeSplits.data(), sizeof(float) * sun.cascades, 9);
     
     for(auto o : objects){
         encoder->setVertexBuffer(o->mesh->vertexBuffer,0,0);

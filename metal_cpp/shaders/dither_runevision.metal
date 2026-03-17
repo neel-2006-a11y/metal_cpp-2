@@ -22,6 +22,7 @@ struct VertexOutput3D{
     float3 color;
     float3 objectPos;
     float2 uv;
+    float viewDepth;
 };
 
 struct CameraUniforms{
@@ -40,9 +41,24 @@ struct DirectionalLight{
     float intensity;
     float3 direction;
     float3 color;
+    int cascades;
 };
 
-float shadowCalculation_dither(float3 worldPos, texture2d<float> shadowMap, sampler shadowSampler, float4x4 lightVP){
+int select_cascade(float viewDepth, constant float* cascadeSplits, int num_cascades){
+    int cascadeIndex = 0;
+    for(int i = 1; i <= num_cascades; i++){
+        if(viewDepth <= cascadeSplits[i]){
+            cascadeIndex = i;
+            break;
+        }
+    }
+    
+    if(cascadeIndex==0)return num_cascades-1;
+    
+    return cascadeIndex-1;
+}
+
+float shadowCalculationCSM_dither(float3 worldPos, texture2d_array<float> shadowMap, sampler shadowSampler, float4x4 lightVP, int cascade){
     float4 lightClip = lightVP * float4(worldPos, 1.0);
     float3 proj = lightClip.xyz / lightClip.w;
     
@@ -55,11 +71,10 @@ float shadowCalculation_dither(float3 worldPos, texture2d<float> shadowMap, samp
     
     float shadow = 0.0;
     
-    float texDepth = shadowMap.sample(shadowSampler, uv).r;
+    float texDepth = shadowMap.sample(shadowSampler, uv, cascade).r;
     if(currentDepth-bias > texDepth)shadow+=1.0;
     return shadow;
 }
-
 
 
 VertexOutput3D vertex vertexMain3D_dither(VertexInput3D in [[stage_in]],
@@ -74,17 +89,19 @@ VertexOutput3D vertex vertexMain3D_dither(VertexInput3D in [[stage_in]],
     out.worldPos = worldPos.xyz;
     out.objectPos = in.position * objectuniforms.scale;
     out.uv = in.uv;
+    out.viewDepth = (cameraUniforms.view * worldPos).z;
     return out;
 }
 
 float4 fragment fragmentMain3D_dither(VertexOutput3D in [[stage_in]],
-                               texture2d<float> shadowMap [[texture(0)]],
+                               texture2d_array<float> shadowMap [[texture(0)]],
                                sampler shadowSampler [[sampler(0)]],
                                constant DirectionalLight& sun [[buffer(3)]],
                                constant float3& cameraPos [[buffer(4)]],
-                               constant float4x4& sunVP [[buffer(5)]],
+                               constant float4x4* sunVPs [[buffer(5)]],
                                constant float3& TileScale [[buffer(7)]],
                                constant float3& BayerScale [[buffer(8)]],
+                               constant float* cascadeSplits [[buffer(9)]],
                                texture2d_array<half> halftoneTex [[texture(1)]],
                                sampler halftoneSampler [[sampler(1)]]){
     float3 N = normalize(in.normal);
@@ -96,8 +113,11 @@ float4 fragment fragmentMain3D_dither(VertexOutput3D in [[stage_in]],
     float diff = max(dot(N, L), 0.0);
     float spec = pow(max(dot(N, H), 0.0), 64.0);
     spec = 0;
-
-    float shadow = shadowCalculation_dither(in.worldPos, shadowMap, shadowSampler, sunVP);
+    
+    int selected_cascade = select_cascade(in.viewDepth, cascadeSplits, sun.cascades);
+    
+    float shadow = shadowCalculationCSM_dither(in.worldPos, shadowMap, shadowSampler, sunVPs[selected_cascade], selected_cascade);
+    
     float3 color =
         sun.color * sun.intensity * diff +
         sun.color * spec * 0.2;
@@ -119,8 +139,7 @@ float4 fragment fragmentMain3D_dither(VertexOutput3D in [[stage_in]],
     float MinAdapt = exp2(-2.0f);
     
     float pixelCoverage = max(length(duvdx), length(duvdy)) * TileScale.x;
-    float lum_bias = 0.2;
-    float scale = (BayerScale.x / pixelCoverage) * (luminance + lum_bias)/(1.0+lum_bias);
+    float scale = (BayerScale.x / pixelCoverage) * sqrt(luminance);
     
     scale = clamp(scale, MinAdapt, MaxAdapt);
     float log_scale = log2(scale);
@@ -141,18 +160,8 @@ float4 fragment fragmentMain3D_dither(VertexOutput3D in [[stage_in]],
     float dithered = value > threshold ? 1.0 : 0.0;
     
     float out;
+    
     out = dithered;
-//    out = adaptiveScale == MinAdapt ? 1.0 : 0.0;
-//    out =  adaptiveScale / MaxAdapt;
-//    out = value;
     
     return float4(out, out, out, 1.0);
-
-//    return float4(value, value, value, 1.0);
-//    float debug = clipped;
-//    return float4(debug, debug, debug, 1.0);
-//    return float4(dithered, tileFrac,0,1);
-//    return float4(in.objectPos.xyz, 1.0);
-//    return float4(dithered, dithered, dithered, 1.0);
-//    return float4(color, 1.0);
 }

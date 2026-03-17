@@ -53,7 +53,11 @@ private:
     
     // shadow map
     DirectionalLight sun;
+    
     MTL::Texture* shadowMap = nullptr;
+    MTL::Texture* shadowMapCSM = nullptr;
+    int shadowRes = 1024;
+    int cascades = 4;
     MTL::SamplerState* shadowSampler = nullptr;
     
     

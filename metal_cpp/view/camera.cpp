@@ -16,7 +16,7 @@ yaw(90.0f),
 pitch(0.0f),
 fov(60.0f),
 aspect(aspect),
-nearZ(0.01f),
+nearZ(0.1f),
 farZ(100.0f),
 speed(10.0f)
 {}
@@ -75,4 +75,45 @@ simd::float4x4 Camera::projection() const {
 
 simd::float4x4 Camera::viewProjection() const {
     return projection() * view();
+}
+
+
+
+std::vector<float> Camera::computeCascadeSplits(int num_cascades, float lambda){
+    std::vector<float> splits(num_cascades+1);
+    splits[0] = this->nearZ;
+    for(int i = 0; i < num_cascades; i++){
+        float p = (i+1)/(float)num_cascades;
+        
+        float logSplit = this->nearZ * pow(this->farZ / this->nearZ, p);
+        float linSplit = this->nearZ + (this->farZ-this->nearZ)*p;
+        
+        splits[i+1] = lambda * logSplit + (1-lambda) * linSplit;
+    }
+    return splits;
+}
+
+std::vector<worldFrustrum> Camera::computeCascadeFrustrums(std::vector<float> cascadeSplits){
+    float ndcs[8][3] = {
+        {-1,-1,0}, {1,-1,0}, {1,1,0}, {-1,1,0},
+        {-1,-1,1}, {1,-1,1}, {1,1,1}, {-1,1,1},
+    };
+    int cascades = (int)cascadeSplits.size()-1;
+    simd::float4x4 view = this->view();
+    
+    std::vector<worldFrustrum> frusts;
+    for(int i=0;i<cascades;i++){
+        simd::float4x4 proj = mtlm::perspective_projection(this->fov, this->aspect, cascadeSplits[i], cascadeSplits[i+1]);
+        simd::float4x4 VP = proj * view;
+        
+        worldFrustrum frust;
+        for (int i=0; i<8; i++) {
+            simd::float4 worldPos = simd::inverse(VP) * simd::float4{ndcs[i][0], ndcs[i][1], ndcs[i][2], 1.0};
+            worldPos /= worldPos.w;
+            frust.points.push_back(worldPos.xyz);
+        }
+        frusts.push_back(frust);
+    }
+    
+    return frusts;
 }

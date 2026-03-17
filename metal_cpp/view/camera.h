@@ -7,6 +7,11 @@
 
 #pragma once
 #include <simd/simd.h>
+#include <vector>
+
+struct worldFrustrum{
+    std::vector<simd::float3> points;
+};
 
 class Camera {
 public:
@@ -26,6 +31,8 @@ public:
     simd::float3 position() const {return pos;}
     bool relativeMouse = false;
     
+    std::vector<float> computeCascadeSplits(int num_cascades, float lambda);
+    std::vector<worldFrustrum> computeCascadeFrustrums(std::vector<float> cascadeSplits);
 private:
     // state
     simd::float3 pos;
