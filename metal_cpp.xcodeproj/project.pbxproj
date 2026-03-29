@@ -123,6 +123,7 @@
 				TargetAttributes = {
 					840699FA2F164241000BB6ED = {
 						CreatedOnToolsVersion = 26.2;
+						LastSwiftMigration = 2630;
 					};
 				};
 			};
@@ -274,6 +275,7 @@
 		84069A032F164241000BB6ED /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				"HEADER_SEARCH_PATHS[arch=*]" = (
 					"$(PROJECT_DIR)/metal_cpp",
@@ -286,12 +288,15 @@
 				"LIBRARY_SEARCH_PATHS[arch=*]" = "$(PROJECT_DIR)/dependencies";
 				"OTHER_LDFLAGS[arch=*]" = "/opt/homebrew/lib/libglfw.3.dylib\n";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
 			};
 			name = Debug;
 		};
 		84069A042F164241000BB6ED /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				"HEADER_SEARCH_PATHS[arch=*]" = "$(PROJECT_DIR)/dependencies";
 				LIBRARY_SEARCH_PATHS = (
@@ -301,6 +306,7 @@
 				"LIBRARY_SEARCH_PATHS[arch=*]" = "$(PROJECT_DIR)/dependencies";
 				"OTHER_LDFLAGS[arch=*]" = "/opt/homebrew/lib/libglfw.3.dylib\n";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 6.0;
 			};
 			name = Release;
 		};

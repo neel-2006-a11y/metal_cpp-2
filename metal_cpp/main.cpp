@@ -33,15 +33,15 @@ int main(int argc, const char * argv[]) {
     bool makeT = false;
     if(makeT){
         bool grad = true;
-        int dim = 13;
+        int dim = 49;
         Image textures[dim];
         for (int i=0; i<dim; i++) {
             textures[i].resolution = 256;
             textures[i].pixels.resize(textures[i].resolution * textures[i].resolution);
         }
-        TextureFactory::generate4x4(textures, textures[0].resolution, grad);
+        TextureFactory::generate8x8(textures, textures[0].resolution, grad);
         for (int i=0; i<dim; i++){
-            savePPM(textures[i], "texture"+std::to_string(i)+".ppm");
+            savePPM(textures[i], "halftone_textures/texture"+std::to_string(i)+".ppm");
         }
     }
     autoreleasePool->release();

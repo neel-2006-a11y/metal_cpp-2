@@ -136,12 +136,12 @@ float4 fragment fragmentMain3D_dither(VertexOutput3D in [[stage_in]],
     float2 duvdy = dfdy(in.uv);
     
     float MaxAdapt = exp2(12.0f);
-    float MinAdapt = exp2(-2.0f);
+    float MinAdapt = exp2(-5.0f);
     
-    float pixelCoverage = max(length(duvdx), length(duvdy)) * TileScale.x;
-    float scale = (BayerScale.x / pixelCoverage) * sqrt(luminance);
+    float pixelCoverage = max(length(duvdx), length(duvdy));
+    float scale = (BayerScale.x * TileScale.x / pixelCoverage) * sqrt(luminance);
     
-    scale = clamp(scale, MinAdapt, MaxAdapt);
+    scale = clamp(scale, MinAdapt * sqrt(luminance), MaxAdapt * sqrt(luminance));
     float log_scale = log2(scale);
     float lod = floor(log_scale);
     float frac = fract(log_scale);
@@ -149,9 +149,6 @@ float4 fragment fragmentMain3D_dither(VertexOutput3D in [[stage_in]],
     
     float adaptiveScale = exp2(lod);
     
-    
-    
-    // sample using tiled UV in BayerMatrix
     float2 sampleUV = fract(in.uv * adaptiveScale);
     
     float value = halftoneTex.sample(halftoneSampler, sampleUV, transition).r;
@@ -162,6 +159,8 @@ float4 fragment fragmentMain3D_dither(VertexOutput3D in [[stage_in]],
     float out;
     
     out = dithered;
+//    out = sampleUV.x;
+//    out = scale == MinAdapt * sqrt(luminance) ? 1.0 : 0.0;
     
     return float4(out, out, out, 1.0);
 }

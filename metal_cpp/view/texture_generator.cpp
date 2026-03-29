@@ -60,7 +60,9 @@ void generateTexture(Image* outTexture, int resolution, int dots, int n, bool gr
     };
     
     int activated = (dots) * 4;
+    
     double radius_2 = 0.5 / ((M_PI) * (dots));
+//    double radius_2 = 0.125 / dots;
     
     for(int x=0; x<resolution; x++){
         for(int y=0; y<resolution; y++){
@@ -78,6 +80,7 @@ void generateTexture(Image* outTexture, int resolution, int dots, int n, bool gr
                     double pos_y = (float)y/resolution;
                     
                     double dist_2 = (cx-pos_x)*(cx-pos_x) + (cy-pos_y)*(cy-pos_y);
+//                    double dist_2 = fmax((cx-pos_x)*(cx-pos_x), (cy-pos_y)*(cy-pos_y));
                     
                     if(grad)
                         outTexture->pixels[x*resolution + y] = fmax((radius_2-dist_2)/radius_2 , outTexture->pixels[x*resolution + y]);
@@ -99,6 +102,12 @@ void TextureFactory::generate2x2(Image outTextures[4], int resolution, bool grad
 void TextureFactory::generate4x4(Image outTextures[13], int resolution, bool grad){
     for (int dots=4; dots<=16; dots++) {
         generateTexture(&outTextures[dots-4], resolution, dots, 4, grad);
+    }
+}
+
+void TextureFactory::generate8x8(Image outTextures[13], int resolution, bool grad){
+    for (int dots=16; dots<=64; dots++) {
+        generateTexture(&outTextures[dots-16], resolution, dots, 8, grad);
     }
 }
 
@@ -166,75 +175,4 @@ void savePPM(const Image& img, const std::string& filename){
         file.write(reinterpret_cast<const char*>(rgb), 3);
 #endif
     }
-}
-
-Image loadPPM(const std::string& filename)
-{
-    std::ifstream file(filename, std::ios::binary);
-    if(!file) throw std::runtime_error("FAILED TO OPEN PPM");
-
-    std::string header;
-    file >> header;
-    if(header != "P6")
-        throw std::runtime_error("Unsupported PPM format");
-    
-    int width, height, maxval;
-    file >> width >> height >> maxval;
-    file.get(); // skip newline
-
-    Image img;
-    img.resolution = width;
-    img.pixels.resize(width * height);
-    
-    const int size = width * height;
-#if HALFTONE_TEXTURE_16BIT
-    for (int i = 0; i < size; i++)
-    {
-        unsigned char rgb[6];
-        file.read(reinterpret_cast<char*>(rgb), 6);
-
-        uint16_t r = (rgb[0] << 8) | rgb[1]; // big-endian
-        img.pixels[i] = r / 65535.0f;
-    }
-#else
-    for (int i = 0; i < size; i++)
-        {
-            unsigned char rgb[3];
-            file.read(reinterpret_cast<char*>(rgb), 3);
-
-            img.pixels[i] = rgb[0] / 255.0f;
-        }
-#endif
-
-    return img;
-}
-
-MTL::Texture* createTextureArray(MTL::Device* device, std::vector<Image>& images){
-    int resolution = images[0].resolution;
-    int layers = int(images.size());
-    
-    auto desc = MTL::TextureDescriptor::texture2DDescriptor(HALFTONE_PIXEL_FORMAT, resolution, resolution, false);
-    
-    desc->setTextureType(MTL::TextureType2DArray);
-    desc->setArrayLength(layers);
-    desc->setUsage(MTL::TextureUsageShaderRead);
-    
-    MTL::Texture* textureArray = device->newTexture(desc);
-    
-    std::vector<std::vector<HalftonePixel>> pixels(layers);
-    
-    for(int i=0; i<layers; i++){
-        pixels[i].resize(resolution * resolution);
-        for(int j = 0; j < resolution * resolution; j++){
-//            simd::half16 h = simd::half16(images[i].pixels[j]);
-            pixels[i][j] = (HalftonePixel)(images[i].pixels[j] * HALFTONE_PIXEL_SCALE);
-        }
-    }
-    
-    for(int i=0; i<layers; i++){
-        MTL::Region region = MTL::Region(0, 0, resolution, resolution);
-        
-        textureArray->replaceRegion(region, 0, i, pixels[i].data(), resolution * sizeof(HalftonePixel), 0);
-    }
-    return textureArray;
 }

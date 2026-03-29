@@ -8,18 +8,22 @@
 #pragma once
 #include "config.h"
 #include "backend/windowBridge.h"
-#include "view/renderer.h"
+#include "view/Engine.h"
+#include "view/renderer2.h"
 
 class App
 {
 public:
+    
     App();
     ~App();
 
     void Run();
+    void resize(int width, int height, int fbWidth, int fbHeight);
 
 private:
     MTL::Device* device;
     NativeWindowBridge windowBridge;
-    Renderer* renderer;
+    Renderer2* renderer2;
+    Engine* engine;
 };

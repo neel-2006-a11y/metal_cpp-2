@@ -7,11 +7,13 @@
 
 #pragma once
 #include "config.h"
+#include "resource_managers/mesh.h"
+#include "resource_managers/resource_types.h"
 
-struct Mesh {
-    MTL::Buffer* vertexBuffer, *indexBuffer;
-    MTL::VertexDescriptor* vertexDescriptor;
-    uint indexCount;
+struct vertex_index_pair{
+    std::vector<uint8_t> vertexData;
+    std::vector<uint16_t> indexData;
+    int indexCount;
 };
 
 namespace MeshFactory {
@@ -20,9 +22,12 @@ namespace MeshFactory {
     Mesh buildQuad(MTL::Device* device);
     Mesh buildCube(MTL::Device* device, simd::float3 scale);
     Mesh buildSphere(MTL::Device* device, uint16_t stacks, uint16_t slices, float radius);
+
+    vertex_index_pair buildCube2(MTL::Device* device, simd::float3 scale);
+    vertex_index_pair buildSphere2(MTL::Device* device, uint16_t stacks, uint16_t slices, float radius);
 }
 
 struct Object{
-    Mesh* mesh;
+    MeshID meshID;
     ObjectUniforms objectU;
 };
