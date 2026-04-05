@@ -25,7 +25,7 @@ struct Vertex3D{
 
 struct Mesh{
     std::vector<Vertex3D> vertices;
-    std::vector<uint16_t> indices;
+    std::vector<Index> indices;
     int indexCount;
     
     MTL::Buffer *vertexBuffer = nullptr, *indexBuffer = nullptr;
@@ -36,7 +36,7 @@ struct Mesh{
 
 struct Mesh2{
     std::vector<uint8_t> vertexData;
-    std::vector<uint16_t> indexData;
+    std::vector<Index> indexData;
     
     // gpu handles
     void* vertexBuffer = nullptr;

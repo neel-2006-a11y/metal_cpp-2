@@ -5,8 +5,7 @@
 //  Created by Neel on 20/02/26.
 //
 #include <metal_stdlib>
-
-#define CASCADES 4
+#include "common.metal"
 using namespace metal;
 
 struct Vertex3D_2{
@@ -14,30 +13,6 @@ struct Vertex3D_2{
     float3 color [[attribute(1)]];
     float2 uv [[attribute(2)]];
     float3 normal [[attribute(3)]];
-};
-
-struct ObjectUniforms_2{
-    float4x4 model;
-    float4x4 invModel;
-    float3 tileScale;
-};
-
-struct FrameUniforms_2{
-    float4x4 view;
-    float4x4 proj;
-    float4x4 viewProj;
-    
-    float3 cameraPos;
-    
-    float intensity;
-    float3 direction;
-    float3 color;
-    int cascades;
-    
-    float4x4 sunVPs[CASCADES];
-    float cascadeSplits[CASCADES];
-    
-    float BayerScale;
 };
 
 

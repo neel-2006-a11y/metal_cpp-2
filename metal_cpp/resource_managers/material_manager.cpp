@@ -52,3 +52,8 @@ Material* MaterialManager::get(MaterialID id)
     if(it == materials.end()) return nullptr;
     return &it->second;
 }
+
+void MaterialManager::setPipeline(MaterialID id, PipelineID pipeline){
+    auto& mat = materials[id];
+    mat.pipeID = pipeline;
+}

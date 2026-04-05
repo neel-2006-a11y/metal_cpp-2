@@ -8,6 +8,7 @@
 #include "render_passes/shadow_pass.h"
 #include "passers/MTL_Texture_passer.h"
 #include "passers/MTL_Mesh_passer.h"
+#include "config.h"
 
 void ShadowPass::execute(Renderer2 &renderer){
     auto* device = renderer.device;
@@ -65,7 +66,7 @@ void ShadowPass::execute(Renderer2 &renderer){
             // Mesh Vertex Data
             encoder->setVertexBuffer((MTL::Buffer*)mesh->vertexBuffer, 0, 0);
             
-            encoder->drawIndexedPrimitives(MTL::PrimitiveTypeTriangle, mesh->indexCount, MTL::IndexTypeUInt16, (MTL::Buffer*)mesh->indexBuffer, 0, 1);
+            encoder->drawIndexedPrimitives(MTL::PrimitiveTypeTriangle, mesh->indexCount, INDEX_FORMAT, (MTL::Buffer*)mesh->indexBuffer, 0, 1);
             ind++;
         }
         

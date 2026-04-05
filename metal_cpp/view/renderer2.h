@@ -29,6 +29,8 @@ public:
     MaterialManager* materialManager;
     PipelineManager* pipelineManger;
     
+    MTL::SamplerState* defaultSampler = nullptr;
+    
     MTL::CommandBuffer* cmd = nullptr;
     
     MTL::Buffer* frameBuffer[FIF];

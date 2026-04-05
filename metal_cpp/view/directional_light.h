@@ -15,7 +15,7 @@ struct simple{
     float intensity = 1.0;
     simd::float3 direction = {1.0,0.0,0.0};
     simd::float3 color = {0.5,0.5, 0.0};
-    int cascades = 4;
+    int cascades = CASCADES;
 };
 
 class DirectionalLight{
@@ -24,7 +24,7 @@ public:
     simd::float3 direction;
     simd::float3 color = {0.5,0.5, 0.0};
     
-    int cascades = 4;
+    int cascades = CASCADES;
     
     bool viewDirty=true, projDirty=true;
     simd::float4x4 view;

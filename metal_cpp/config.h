@@ -31,6 +31,15 @@
     constexpr float HALFTONE_PIXEL_SCALE = 255.0f;
 #endif
 
+#define INDEX_SIZE_32BIT 1
+#if INDEX_SIZE_32BIT
+    using Index = uint32_t;
+    constexpr MTL::IndexType INDEX_FORMAT = MTL::IndexTypeUInt32;
+#else
+    using Index = uint16_t;
+    constexpr MTL::IndexType INDEX_FORMAT = MTL::IndexTypeUInt16;
+#endif
+
 #define CASCADES 4
 
 #define FIF 3
@@ -50,6 +59,7 @@ struct ObjectUniforms{
     simd::float4x4 model;
     simd::float4x4 invModel;
     simd::float3 tileScale = simd::float3{1.0,1.0,1.0};
+    bool hasDiffuse;
 };
 
 
@@ -60,6 +70,7 @@ struct FrameUniforms{
     simd::float4x4 view;
     simd::float4x4 proj;
     simd::float4x4 viewProj;
+    simd::float4x4 invViewProj;
     
     simd::float3 cameraPos;
     

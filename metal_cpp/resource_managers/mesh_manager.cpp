@@ -7,7 +7,7 @@
 
 #include "resource_managers/mesh_manager.h"
 
-MeshID MeshManager::createMesh(void* vertices, size_t vertexSize, std::vector<uint16_t>& indices){
+MeshID MeshManager::createMesh(void* vertices, size_t vertexSize, std::vector<Index>& indices){
     Mesh2 mesh;
     
     // copy vertex data

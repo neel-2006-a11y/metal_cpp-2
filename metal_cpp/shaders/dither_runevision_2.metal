@@ -6,80 +6,8 @@
 //
 
 #include <metal_stdlib>
-#define CASCADES 4
+#include "common.metal"
 using namespace metal;
-
-struct VertexInput3D_2{
-    float3 position [[attribute(0)]];
-    float3 color [[attribute(1)]];
-    float2 uv [[attribute(2)]];
-    float3 normal [[attribute(3)]];
-};
-
-struct VertexOutput3D_2{
-    float4 position [[position]];
-    float3 normal;
-    float3 worldPos;
-    float3 color;
-    float2 uv;
-    float viewDepth;
-};
-
-struct ObjectUniforms_2{
-    float4x4 model;
-    float4x4 invModel;
-    float3 tileScale;
-};
-
-struct FrameUniforms_2{
-    float4x4 view;
-    float4x4 proj;
-    float4x4 viewProj;
-    
-    float3 cameraPos;
-    
-    float intensity;
-    float3 direction;
-    float3 color;
-    int cascades;
-    
-    float4x4 sunVPs[CASCADES];
-    float cascadeSplits[CASCADES];
-    
-    float BayerScale;
-};
-
-int select_cascade_2(float viewDepth, constant float* cascadeSplits, int num_cascades){
-    int cascadeIndex = 0;
-    for(int i = 1; i <= num_cascades; i++){
-        if(viewDepth <= cascadeSplits[i]){
-            cascadeIndex = i;
-            break;
-        }
-    }
-    
-    if(cascadeIndex==0)return num_cascades-1;
-    
-    return cascadeIndex-1;
-}
-
-float shadowCalculationCSM_dither_2(float3 worldPos, texture2d_array<float> shadowMap, sampler shadowSampler, float4x4 lightVP, int cascade){
-    float4 lightClip = lightVP * float4(worldPos, 1.0);
-    float3 proj = lightClip.xyz / lightClip.w;
-    
-    float2 uv = proj.xy * 0.5 + 0.5;
-    uv.y = 1-uv.y;
-    if (uv.x < 0 || uv.x > 1 || uv.y < 0 || uv.y > 1)
-        return 0.0;
-    float currentDepth = proj.z;
-    float bias = 0.0005;
-    
-    float shadow = 0.0;
-    
-    float texDepth = shadowMap.sample(shadowSampler, uv, cascade).r;
-    if(currentDepth-bias > texDepth)shadow+=1.0;
-    return shadow;
-}
 
 
 VertexOutput3D_2 vertex vertexMain3D_dither_2(VertexInput3D_2 in [[stage_in]],
@@ -103,6 +31,7 @@ float4 fragment fragmentMain3D_dither_2(
                                       sampler shadowSampler [[sampler(0)]],
                                       texture2d_array<half> halftoneTex [[texture(1)]],
                                       sampler halftoneSampler [[sampler(1)]],
+                                      texture2d<float> diffuse [[texture(2)]],
                                       constant FrameUniforms_2& frame [[buffer(1)]],
                                       constant ObjectUniforms_2& object [[buffer(2)]]
                                       ){
@@ -120,15 +49,19 @@ float4 fragment fragmentMain3D_dither_2(
     
     float shadow = shadowCalculationCSM_dither_2(in.worldPos, shadowMap, shadowSampler, frame.sunVPs[selected_cascade], selected_cascade);
     
-    float3 color =
+    float3 diffuse_color = float3(1.0);
+    if(object.hasDiffuse)
+        diffuse_color = diffuse.sample(halftoneSampler, in.uv).xyz;
+    
+    float3 light =
         frame.color * frame.intensity * diff +
         frame.color * spec * 0.2;
     
-    color *= (1.0-shadow);
+    light *= (1.0-shadow);
     
-    color += 0.05*float3(1.0); // ambient light
+    light += 0.05*float3(1.0); // ambient light
     
-    float luminance = dot(color, float3(0.299, 0.587, 0.114));
+    float luminance = dot(light, float3(0.299, 0.587, 0.114));
     float luminance_max = dot(float3(1.0,1.0,1.0), float3(0.299, 0.587, 0.114));
     luminance /= luminance_max;
     
@@ -159,12 +92,15 @@ float4 fragment fragmentMain3D_dither_2(
     float threshold = 1-(luminance) +0.01;
     float dithered = value > threshold ? 1.0 : 0.0;
     
-    float out;
+    float3 out;
     
-    out = dithered;
+    out = dithered * diffuse_color;
+//    out = diffuse_color.b;
 //    out = sampleUV.x;
 //    out = scale == MinAdapt * sqrt(luminance) ? 1.0 : 0.0;
     
 //    return float4(1.0,0.0,0.0,1.0);
-    return float4(out, out, out, 1.0);
+//    return float4(out, out, out, 1.0);
+    return float4(out, 1.0);
+//    return float4(in.worldPos,1.0);
 }

@@ -13,15 +13,18 @@
 void MainPass::execute(Renderer2 &r){
     auto* rp = MTL::RenderPassDescriptor::alloc()->init();
     
+    
+    Texture* sceneColor = r.textureManager->get(sceneColorTexture);
+    uploadTextureToGPU(*sceneColor, r.device);
     // Color attachment
-    rp->colorAttachments()->object(0)->setTexture(drawableTexture);
+    rp->colorAttachments()->object(0)->setTexture((MTL::Texture*)sceneColor->gpuTexture);
     rp->colorAttachments()->object(0)->setLoadAction(MTL::LoadActionClear);
     rp->colorAttachments()->object(0)->setStoreAction(MTL::StoreActionStore);
     rp->colorAttachments()->object(0)->setClearColor({0.1, 0.1, 0.15, 1.0});
     
     // Depth attachment
     Texture* depth = r.textureManager->get(depthTexture);
-    uploadEmptyTextureToGPU(*depth, r.device);
+    uploadTextureToGPU(*depth, r.device);
     
     rp->depthAttachment()->setTexture((MTL::Texture*)depth->gpuTexture);
     rp->depthAttachment()->setLoadAction(MTL::LoadActionClear);
@@ -70,7 +73,7 @@ void MainPass::execute(Renderer2 &r){
         
         encoder->setVertexBuffer((MTL::Buffer*)mesh->vertexBuffer, 0, 0);
         
-        encoder->drawIndexedPrimitives(MTL::PrimitiveTypeTriangle, mesh->indexCount, MTL::IndexTypeUInt16, (MTL::Buffer*)mesh->indexBuffer, 0, 1);
+        encoder->drawIndexedPrimitives(MTL::PrimitiveTypeTriangle, mesh->indexCount, INDEX_FORMAT, (MTL::Buffer*)mesh->indexBuffer, 0, 1);
         ind++;
     }
     encoder->endEncoding();

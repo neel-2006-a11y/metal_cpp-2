@@ -12,7 +12,7 @@
 
 struct vertex_index_pair{
     std::vector<uint8_t> vertexData;
-    std::vector<uint16_t> indexData;
+    std::vector<Index> indexData;
     int indexCount;
 };
 

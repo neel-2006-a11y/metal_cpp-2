@@ -13,6 +13,14 @@ inline size_t align256(size_t size) {
 
 Renderer2::Renderer2(MTL::Device* device, CA::MetalLayer* layer, GLFWwindow* glfwWindow): device(device), metalLayer(layer), glfwWindow(glfwWindow){
     commandQueue = device->newCommandQueue();
+    
+    // Default sampler
+    MTL::SamplerDescriptor* default_desc = MTL::SamplerDescriptor::alloc()->init();
+    default_desc->setMinFilter(MTL::SamplerMinMagFilterNearest);
+    default_desc->setMagFilter(MTL::SamplerMinMagFilterNearest);
+    default_desc->setMaxAnisotropy(1);
+    default_desc->setMipFilter(MTL::SamplerMipFilterNotMipmapped);
+    defaultSampler = device->newSamplerState(default_desc);
 }
 
 void Renderer2::initFrameBuffer(){

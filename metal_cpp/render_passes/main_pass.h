@@ -14,7 +14,7 @@ class MainPass : public RenderPass
 {
 public:
     TextureID depthTexture;
-    MTL::Texture* drawableTexture; // swapchain
+    TextureID sceneColorTexture;
     
     void execute(Renderer2& r) override;
     void release() override;

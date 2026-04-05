@@ -17,6 +17,7 @@ public:
     
     void setTexture(MaterialID mat, uint32_t slot, TextureID tex);
     void setSampler(MaterialID mat, uint32_t slot, void* sampler);
+    void setPipeline(MaterialID mat, PipelineID pipeline);
     
     Material* get(MaterialID id);
     

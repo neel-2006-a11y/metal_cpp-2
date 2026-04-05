@@ -1,0 +1,22 @@
+# Blender 4.5.2 LTS MTL File: 'test_cactus.blend'
+# www.blender.org
+
+newmtl Cacti_MAT.001
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Kd Cacti_Diffuse.jpg
+map_Ns Cacti_Roughness.jpg
+
+newmtl Pot_MAT.001
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Kd Cacti_Pot_Diffuse.png
+map_Ns Cacti_Pot_Roughness.jpg

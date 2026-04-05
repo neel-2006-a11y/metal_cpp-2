@@ -6,8 +6,10 @@
 //
 
 #include "resource_managers/texture_manager.h"
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 
-TextureID TextureManager::createTexture(TextureDesc& desc, void* srcData)
+TextureID TextureManager::createTexture(TextureDesc& desc, void* srcData, bool no_cpu = false)
 {
     Texture tex;
     tex.desc = desc;
@@ -15,10 +17,11 @@ TextureID TextureManager::createTexture(TextureDesc& desc, void* srcData)
     size_t bpp = bytesPerPixel(desc.format);
     size_t totalSize = desc.width * desc.height * desc.layers * bpp;
 
-    tex.raw_data.resize(totalSize);
+    if(!no_cpu)
+        tex.raw_data.resize(totalSize);
 
     if (srcData) {
-        std::memcpy(tex.raw_data.data(), srcData, totalSize);
+        memcpy(tex.raw_data.data(), srcData, totalSize);
     }
 
     TextureID id = nextID++;
@@ -31,6 +34,11 @@ TextureID TextureManager::createTexture(TextureDesc& desc, void* srcData)
 TextureID TextureManager::createEmpty(TextureDesc& desc)
 {
     return createTexture(desc, nullptr);
+}
+
+TextureID TextureManager::createEmptyNoCPU(TextureDesc& desc)
+{
+    return createTexture(desc, nullptr, true);
 }
 
 
@@ -212,4 +220,87 @@ TextureID TextureManager::loadPPMArray(std::vector<std::string> &filenames, Text
         return createTexture(desc, data16.data());
     else
         return createTexture(desc, data8.data());
+}
+
+TextureID TextureManager::loadFromFile(const std::string& path){
+    // ----------
+    // Check Cache
+    // ----------
+    if(cache.find(path) != cache.end()){
+        return cache[path];
+    }
+    
+    // ----------
+    // load from disk
+    // ----------
+    int width, height, channels;
+    
+    stbi_set_flip_vertically_on_load(false);
+    
+    unsigned char* data = stbi_load(path.c_str(), &width, &height, &channels, 0);
+    if(!data){
+        std::cout << "Failed to load Texture: " << path << std::endl;
+        return INVALID_TEXTURE;
+    }
+    
+    // ----------
+    // decide format
+    // ----------
+    TextureFormat format;
+    
+    if(channels == 1){
+        format = TextureFormat::R8Unorm;
+    }else if(channels == 3){
+        format = TextureFormat::RGBA8Unorm;
+    }else{
+        printf("Unsupported channel count: %d\n", channels);
+        return INVALID_TEXTURE;
+    }
+    
+    // ----------
+    // convert to RGBA if needed
+    // ----------
+    unsigned char* finalData = data;
+    
+    if(channels == 3){
+        //expand RGB -> RGBA
+        size_t size = width * height * 4;
+        unsigned char* rgba = new unsigned char[size];
+        
+        for(int i=0; i<width * height; i++){
+            rgba[i * 4 + 0] = data[i * 3 + 2];
+            rgba[i * 4 + 1] = data[i * 3 + 1];
+            rgba[i * 4 + 2] = data[i * 3 + 0];
+            rgba[i * 4 + 3] = 255;
+        }
+        finalData = rgba;
+        stbi_image_free(data);
+    }
+    
+    // ----------
+    // Create Texture Desc
+    // ----------
+    TextureDesc desc;
+    desc.width = width;
+    desc.height = height;
+    desc.format = format;
+    desc.usage = TextureUsage::Sampled;
+    desc.storageMode = StorageMode::Shared;
+    
+    TextureID id = createTexture(desc, finalData);
+    
+    // ----------
+    // cleanup
+    // ----------
+    if(channels == 3){
+        delete[] finalData;
+    }else{
+        stbi_image_free(finalData);
+    }
+    
+    // ----------
+    // Cache
+    // ----------
+    cache[path] = id;
+    return id;
 }

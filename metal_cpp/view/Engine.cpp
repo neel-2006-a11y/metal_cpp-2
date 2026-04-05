@@ -9,7 +9,7 @@
 #include "view/mesh_factory.h"
 #include "backend/mtlm.h"
 
-Engine::Engine(Renderer2* renderer) : renderer(renderer), pipelineManager(renderer->device, renderer->device->newDefaultLibrary()), camera(float(800)/600), mouseHandler(renderer->glfwWindow), keyboard(renderer->glfwWindow){
+Engine::Engine(Renderer2* renderer) : renderer(renderer), pipelineManager(renderer->device, renderer->device->newDefaultLibrary()), camera(float(800)/600), mouseHandler(renderer->glfwWindow), keyboard(renderer->glfwWindow), modelLoader(&meshManager, &textureManager, &materialManager){
     renderer->textureManager = &textureManager;
     renderer->meshManager = &meshManager;
     renderer->materialManager = &materialManager;
@@ -30,6 +30,9 @@ void Engine::init(){
         {3, offsetof(Vertex3D, normal), VertexAttributeType::Float3}
     };
     
+    // asset directory
+    assetDirectory = "/Users/admin/Desktop/metal_cpp-2/metal_cpp/assets";
+    
     //--------------
     // Create pipelines
     //--------------
@@ -40,7 +43,8 @@ void Engine::init(){
     mainDesc.depthFormat = TextureFormat::Depth32Float;
     mainDesc.vertexLayout = layout;
     
-    mainPipelineID = pipelineManager.createPipeline(mainDesc);
+    halftone_pipeID = pipelineManager.createPipeline(mainDesc);
+    
     
     PipelineDesc shadowDesc;
     shadowDesc.vertexFunc = "shadowVertex";
@@ -48,6 +52,22 @@ void Engine::init(){
     shadowDesc.vertexLayout = layout;
     
     shadowPipelineID = pipelineManager.createPipeline(shadowDesc);
+    
+    
+    PipelineDesc compDesc;
+    compDesc.vertexFunc = "compositeVS";
+    compDesc.fragmentFunc = "compositeFS";
+    compDesc.colorFormat = TextureFormat::RGBA8Unorm;
+    
+    compositePipelineID = pipelineManager.createPipeline(compDesc);
+    
+    
+    PipelineDesc volDesc;
+    volDesc.vertexFunc = "fullScreenVS";
+    volDesc.fragmentFunc = "volumetricFS";
+    volDesc.colorFormat = TextureFormat::RGBA8Unorm;
+    
+    volumetricPipelineID = pipelineManager.createPipeline(volDesc);
     
     //--------------
     // Load Halftone Texture
@@ -76,8 +96,8 @@ void Engine::init(){
     shadowMap_desc.format = TextureFormat::Depth32Float;
     shadowMap_desc.usage = TextureUsage::Sampled | TextureUsage::RenderTarget;
     shadowMap_desc.storageMode = StorageMode::Shared;
-    shadowMap_desc.width = 1024;
-    shadowMap_desc.height = 1024;
+    shadowMap_desc.width = shadow_res;
+    shadowMap_desc.height = shadow_res;
     shadowMap_desc.layers = CASCADES;
     shadowMapID = textureManager.createEmpty(shadowMap_desc);
     
@@ -111,7 +131,7 @@ void Engine::init(){
     //--------------
     // Create material
     //--------------
-    halftoneMaterialID = materialManager.createMaterial(mainPipelineID);
+    halftoneMaterialID = materialManager.createMaterial(halftone_pipeID);
     materialManager.setTexture(halftoneMaterialID, 0, shadowMapID);
     materialManager.setTexture(halftoneMaterialID, 1, halftone_textureID);
     materialManager.setSampler(halftoneMaterialID, 0, shadowMap_sampler);
@@ -123,13 +143,20 @@ void Engine::init(){
     shadowPass.shadowMapArray = shadowMapID;
     shadowPass.shadowPipeline = shadowPipelineID;
     
-    mainPass.depthTexture = depthTextureID;
+    volumetricPass.shadowMap = shadowMapID;
+    volumetricPass.volumetricPipeID = volumetricPipelineID;
+    volumetricPass.sampler = shadowMap_sampler;
+    
+    compositePass.pipeline = compositePipelineID;
     
     //--------------
     // Build RenderGraph
     //--------------
     renderGraph.addPass(&shadowPass);
     renderGraph.addPass(&mainPass);
+    renderGraph.addPass(&volumetricPass);
+    renderGraph.addPass(&compositePass);
+    
     
     //--------------
     // setup Scene (eventually a manager for this too)
@@ -143,7 +170,8 @@ void Engine::init(){
     curtain.uniforms.model = mtlm::identity();
     curtain.uniforms.model *= mtlm::translation({0, 0, 20});
     curtain.uniforms.invModel = simd_inverse(curtain.uniforms.model);
-    curtain.uniforms.tileScale *= 0.5;
+    curtain.uniforms.tileScale *= 0.75;
+    curtain.uniforms.hasDiffuse = false;
     scene.objects.push_back(curtain);
     
     
@@ -156,7 +184,8 @@ void Engine::init(){
     cube.uniforms.model = mtlm::identity();
     cube.uniforms.model *= mtlm::translation({-5, 0, 15});
     cube.uniforms.invModel = simd_inverse(cube.uniforms.model);
-    cube.uniforms.tileScale *= 0.5;
+    cube.uniforms.tileScale *= 0.75;
+    cube.uniforms.hasDiffuse = false;
     scene.objects.push_back(cube);
     
     RenderObject sphere;
@@ -168,8 +197,18 @@ void Engine::init(){
     sphere.uniforms.model = mtlm::identity();
     sphere.uniforms.model *= mtlm::translation({5, 0, 10});
     sphere.uniforms.invModel = simd_inverse(sphere.uniforms.model);
-    sphere.uniforms.tileScale *= 0.5;
+    sphere.uniforms.tileScale *= 0.75;
+    sphere.uniforms.hasDiffuse = false;
     scene.objects.push_back(sphere);
+    
+    // cactus
+    size_t in_ind = scene.objects.size();
+    modelLoader.loadModel( assetDirectory + "/test_cactus/test_cactus.obj", &scene);
+    size_t fin_ind = scene.objects.size()-1;
+    for(size_t i = in_ind; i<=fin_ind; i++){
+        materialManager.setPipeline(scene.objects[i].materialID, halftone_pipeID);
+        scene.objects[i].uniforms.hasDiffuse = true;
+    }
     
     // sun
     sun.direction = { 1.0f, 0.3f, 1.0f };
@@ -193,9 +232,11 @@ void Engine::update(){
     handleKeyboard();
     mouseHandler.updateCamera(&camera);
     
+    frameU.cameraPos = camera.position();
     frameU.view = camera.view();
     frameU.proj = camera.projection();
     frameU.viewProj = camera.viewProjection();
+    frameU.invViewProj = inverse(frameU.viewProj);
     
     frameU.intensity = sun.intensity;
     frameU.direction = sun.direction;
@@ -208,9 +249,9 @@ void Engine::update(){
     sun.fitCameraFrustrums(worldFrustrums);
     auto sunVps = sun.viewProj;
     
-    std::memcpy(frameU.sunVPs, sunVps.data(), sizeof(simd::float4x4) * CASCADES);
-    std::memcpy(frameU.cascadeSplits, cascadeSplits.data(), sizeof(float) * CASCADES);
-    frameU.BayerScale = 0.06;
+    memcpy(frameU.sunVPs, sunVps.data(), sizeof(simd::float4x4) * CASCADES);
+    memcpy(frameU.cascadeSplits, cascadeSplits.data(), sizeof(float) * CASCADES);
+    frameU.BayerScale = 0.04;
 }
 
 void Engine::render(){
@@ -219,7 +260,22 @@ void Engine::render(){
         return;
     }
     
-    std::cout << renderer->metalLayer->drawableSize().width << " " << renderer->metalLayer->drawableSize().height << std::endl;
+    //--------------
+    // update Main Pass
+    //--------------
+    mainPass.depthTexture = depthTextureID;
+    mainPass.sceneColorTexture = sceneColorTextureID;
+    
+    volumetricPass.depthTexture = depthTextureID;
+    volumetricPass.volumetricColorTexture = volumetricTextureID;
+    
+    compositePass.inputColor = sceneColorTextureID;
+    compositePass.volumeColor = volumetricTextureID;
+    compositePass.drawableTexture = drawable->texture();
+    
+//    std::cout << drawable->texture()->pixelFormat() << std::endl;
+    //PixelFormatBGRA8Unorm_sRGB
+//    std::cout << renderer->metalLayer->drawableSize().width << " " << renderer->metalLayer->drawableSize().height << std::endl;
     renderer->frameIndex = (renderer->frameIndex + 1) % FIF;
     
     renderer->cmd = renderer->commandQueue->commandBuffer();
@@ -227,7 +283,7 @@ void Engine::render(){
     renderer->uploadFrameUniforms(frameU);
     renderer->uploadAllObjectUniforms(scene.objects);
     
-    mainPass.drawableTexture = drawable->texture();
+//    mainPass.drawableTexture = drawable->texture();
     
     renderGraph.execute(*renderer);
     renderer->cmd->presentDrawable(drawable);
@@ -283,16 +339,47 @@ void Engine::resize(int fbWidth, int fbHeight){
     // create Depth Texture
     TextureDesc depth_Desc;
     depth_Desc.format = TextureFormat::Depth32Float;
-    depth_Desc.usage = TextureUsage::DepthStencil;
+    depth_Desc.usage = TextureUsage::DepthStencil | TextureUsage::Sampled;
     depth_Desc.storageMode = StorageMode::Private;
     depth_Desc.width = fbWidth;
     depth_Desc.height = fbHeight;
-    depthTextureID = textureManager.createEmpty(depth_Desc);
+    depthTextureID = textureManager.createEmptyNoCPU(depth_Desc);
     
     //--------------
-    // update Main Pass
+    // Recreate color Texture
     //--------------
-    mainPass.depthTexture = depthTextureID;
+    // delete
+    Texture* colTex = textureManager.get(sceneColorTextureID);
+    if(colTex && colTex->uploaded){
+        ((MTL::Texture*)colTex->gpuTexture)->release();
+        colTex->uploaded = false;
+    }
+    // create
+    TextureDesc col_Desc;
+    col_Desc.format = TextureFormat::RGBA8Unorm;
+    col_Desc.usage = TextureUsage::RenderTarget | TextureUsage::Sampled;
+    col_Desc.storageMode = StorageMode::Shared;
+    col_Desc.width = fbWidth;
+    col_Desc.height = fbHeight;
+    sceneColorTextureID = textureManager.createEmptyNoCPU(col_Desc);
+    
+    //--------------
+    // Recreate volume Texture
+    //--------------
+    // delete
+    Texture* volTex = textureManager.get(volumetricTextureID);
+    if(volTex && volTex->uploaded){
+        ((MTL::Texture*)volTex->gpuTexture)->release();
+        volTex->uploaded = false;
+    }
+    // create
+    TextureDesc vol_Desc;
+    vol_Desc.format = TextureFormat::RGBA8Unorm;
+    vol_Desc.usage = TextureUsage::RenderTarget | TextureUsage::Sampled;
+    vol_Desc.storageMode = StorageMode::Shared;
+    vol_Desc.width = fbWidth / volumeDownFact;
+    vol_Desc.height = fbHeight / volumeDownFact;
+    volumetricTextureID = textureManager.createEmptyNoCPU(vol_Desc);
     
     //--------------
     // update Camera aspect

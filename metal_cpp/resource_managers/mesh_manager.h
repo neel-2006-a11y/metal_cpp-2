@@ -10,10 +10,11 @@
 #include "resource_managers/resource_types.h"
 #include <unordered_map>
 #include <vector>
+#include "config.h"
 
 class MeshManager{
 public:
-    MeshID createMesh(void* vertices, size_t vertexSize, std::vector<uint16_t>& indices);
+    MeshID createMesh(void* vertices, size_t vertexSize, std::vector<Index>& indices);
     
     Mesh2* getMesh(MeshID id);
     

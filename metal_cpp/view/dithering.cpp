@@ -5,6 +5,8 @@
 //  Created by Neel on 04/03/26.
 //
 
+// not used anymore
+
 #include "view/dithering.h"
 #define ASSERT_IDX(i,j,k) \
     assert((i) >= 0 && (i) < 4 && "i out of bounds"); \

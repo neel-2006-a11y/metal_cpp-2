@@ -57,6 +57,7 @@ MTL::RenderPipelineState* PipelineManager::get(PipelineID id){
     auto it = pipelines.find(id);
     if(it == pipelines.end()){
         std::cerr << "pipeline with id: " << id << "doesn't exist\n";
+        return nullptr;
     }
     
     return it->second;

@@ -11,6 +11,7 @@
 		84069A092F1646A8000BB6ED /* AppKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 84069A082F1646A8000BB6ED /* AppKit.framework */; };
 		84069A0B2F1646B5000BB6ED /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 84069A0A2F1646B5000BB6ED /* Metal.framework */; };
 		8486C84F2F1ADA81009F385E /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8486C84E2F1ADA81009F385E /* QuartzCore.framework */; };
+		84AE9FE72F7D491100FC9F4C /* libassimp.6.0.2.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 84AE9FE52F7D471A00FC9F4C /* libassimp.6.0.2.dylib */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -31,6 +32,7 @@
 		84069A082F1646A8000BB6ED /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = System/Library/Frameworks/AppKit.framework; sourceTree = SDKROOT; };
 		84069A0A2F1646B5000BB6ED /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
 		8486C84E2F1ADA81009F385E /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
+		84AE9FE52F7D471A00FC9F4C /* libassimp.6.0.2.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libassimp.6.0.2.dylib; path = dependencies/assimp/lib/libassimp.6.0.2.dylib; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -49,6 +51,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				84AE9FE72F7D491100FC9F4C /* libassimp.6.0.2.dylib in Frameworks */,
 				8486C84F2F1ADA81009F385E /* QuartzCore.framework in Frameworks */,
 				84069A0B2F1646B5000BB6ED /* Metal.framework in Frameworks */,
 				84069A092F1646A8000BB6ED /* AppKit.framework in Frameworks */,
@@ -79,6 +82,7 @@
 		84069A052F1646A1000BB6ED /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				84AE9FE52F7D471A00FC9F4C /* libassimp.6.0.2.dylib */,
 				8486C84E2F1ADA81009F385E /* QuartzCore.framework */,
 				84069A0A2F1646B5000BB6ED /* Metal.framework */,
 				84069A082F1646A8000BB6ED /* AppKit.framework */,
@@ -279,13 +283,14 @@
 				CODE_SIGN_STYLE = Automatic;
 				"HEADER_SEARCH_PATHS[arch=*]" = (
 					"$(PROJECT_DIR)/metal_cpp",
-					"$(PROJECT_DIR)/dependencies",
+					"$(PROJECT_DIR)/dependencies/**",
 				);
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					/opt/homebrew/lib,
+					"$(PROJECT_DIR)/dependencies/assimp/lib",
 				);
-				"LIBRARY_SEARCH_PATHS[arch=*]" = "$(PROJECT_DIR)/dependencies";
+				"LIBRARY_SEARCH_PATHS[arch=*]" = "$(PROJECT_DIR)/dependencies/**";
 				"OTHER_LDFLAGS[arch=*]" = "/opt/homebrew/lib/libglfw.3.dylib\n";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -298,12 +303,13 @@
 			buildSettings = {
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
-				"HEADER_SEARCH_PATHS[arch=*]" = "$(PROJECT_DIR)/dependencies";
+				"HEADER_SEARCH_PATHS[arch=*]" = "$(PROJECT_DIR)/dependencies/**";
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					/opt/homebrew/lib,
+					"$(PROJECT_DIR)/dependencies/assimp/lib",
 				);
-				"LIBRARY_SEARCH_PATHS[arch=*]" = "$(PROJECT_DIR)/dependencies";
+				"LIBRARY_SEARCH_PATHS[arch=*]" = "$(PROJECT_DIR)/dependencies/**";
 				"OTHER_LDFLAGS[arch=*]" = "/opt/homebrew/lib/libglfw.3.dylib\n";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 6.0;

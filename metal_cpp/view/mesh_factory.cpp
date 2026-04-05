@@ -17,7 +17,7 @@ Mesh MeshFactory::buildTriangle(MTL::Device* device) {
         {{  -0.75,  0.75}, {0.0, 0.0, 1.0}}
     };
     
-    ushort indices[3] = {0,1,2};
+    Index indices[3] = {0,1,2};
     mesh.indexCount = 3;
     
     //vertex buffer
@@ -25,8 +25,8 @@ Mesh MeshFactory::buildTriangle(MTL::Device* device) {
     memcpy(mesh.vertexBuffer->contents(), vertices, 3 * sizeof(Vertex));
     
     //index buffer
-    mesh.indexBuffer = device->newBuffer(3 * sizeof(ushort), MTL::ResourceStorageModeShared);
-    memcpy(mesh.indexBuffer->contents(), indices, 3 * sizeof(ushort));
+    mesh.indexBuffer = device->newBuffer(3 * sizeof(Index), MTL::ResourceStorageModeShared);
+    memcpy(mesh.indexBuffer->contents(), indices, 3 * sizeof(Index));
     
     // vertex descriptor
     MTL::VertexDescriptor* vertexDescriptor = MTL::VertexDescriptor::alloc()->init();
@@ -66,7 +66,7 @@ Mesh MeshFactory::buildTriangle3D(MTL::Device* device) {
         {0.0,0.0,1.0}
     };
     
-    ushort indices[3] = {0,1,2};
+    Index indices[3] = {0,1,2};
     mesh.indexCount = 3;
     
     Vertex3D vertices[3];
@@ -79,8 +79,8 @@ Mesh MeshFactory::buildTriangle3D(MTL::Device* device) {
     memcpy(mesh.vertexBuffer->contents(), vertices, 3 * sizeof(Vertex3D));
     
     //index buffer
-    mesh.indexBuffer = device->newBuffer(3 * sizeof(ushort), MTL::ResourceStorageModeShared);
-    memcpy(mesh.indexBuffer->contents(), indices, 3 * sizeof(ushort));
+    mesh.indexBuffer = device->newBuffer(3 * sizeof(Index), MTL::ResourceStorageModeShared);
+    memcpy(mesh.indexBuffer->contents(), indices, 3 * sizeof(Index));
     
     return mesh;
 }
@@ -97,7 +97,7 @@ Mesh MeshFactory::buildQuad(MTL::Device* device) {
         {{-0.75,  0.75}, {0.0, 1.0, 0.0}},
     };
     
-    ushort indices[6] = {0, 1, 2, 2, 3, 0};
+    Index indices[6] = {0, 1, 2, 2, 3, 0};
     mesh.indexCount = 6;
     
     //vertex buffer
@@ -105,8 +105,8 @@ Mesh MeshFactory::buildQuad(MTL::Device* device) {
     memcpy(mesh.vertexBuffer->contents(), vertices, 4 * sizeof(Vertex));
     
     //index buffer
-    mesh.indexBuffer = device->newBuffer(6 * sizeof(ushort), MTL::ResourceStorageModeShared);
-    memcpy(mesh.indexBuffer->contents(), indices, 6 * sizeof(ushort));
+    mesh.indexBuffer = device->newBuffer(6 * sizeof(Index), MTL::ResourceStorageModeShared);
+    memcpy(mesh.indexBuffer->contents(), indices, 6 * sizeof(Index));
     
     return mesh;
 }
@@ -167,14 +167,14 @@ Mesh MeshFactory::buildCube(MTL::Device *device, simd::float3 scale){
         }
     }
 
-    std::vector<ushort> indices;
+    std::vector<Index> indices;
 
-    for(ushort i=0;i<6;i++){
-        ushort start = i * 4;
+    for(Index i=0;i<6;i++){
+        Index start = i * 4;
 
         indices.insert(indices.end(),{
-            start, static_cast<unsigned short>(start+ushort(1)), static_cast<unsigned short>(start+ushort(2)),
-            start, static_cast<unsigned short>(start+ushort(2)), static_cast<unsigned short>(start+ushort(3))
+            start, static_cast<unsigned short>(start+Index(1)), static_cast<unsigned short>(start+Index(2)),
+            start, static_cast<unsigned short>(start+Index(2)), static_cast<unsigned short>(start+Index(3))
         });
     }
 
@@ -189,12 +189,12 @@ Mesh MeshFactory::buildCube(MTL::Device *device, simd::float3 scale){
            vertices.size()*sizeof(Vertex3D));
 
     mesh.indexBuffer = device->newBuffer(
-        indices.size()*sizeof(ushort),
+        indices.size()*sizeof(Index),
         MTL::ResourceStorageModeShared);
 
     memcpy(mesh.indexBuffer->contents(),
            indices.data(),
-           indices.size()*sizeof(ushort));
+           indices.size()*sizeof(Index));
 
     return mesh;
 }
@@ -205,7 +205,7 @@ Mesh MeshFactory::buildSphere(MTL::Device* device,
                                float radius)
 {
     std::vector<Vertex3D> vertices;
-    std::vector<uint16_t> indices;
+    std::vector<Index> indices;
 
     for (uint16_t i = 0; i <= stacks; ++i)
     {
@@ -239,13 +239,13 @@ Mesh MeshFactory::buildSphere(MTL::Device* device,
             uint16_t row1 = i * (slices + 1);
             uint16_t row2 = (i + 1) * (slices + 1);
 
-            indices.push_back(row1 + j);
-            indices.push_back(row2 + j);
-            indices.push_back(row1 + j + 1);
+            indices.push_back(Index(row1 + j));
+            indices.push_back(Index(row2 + j));
+            indices.push_back(Index(row1 + j + 1));
 
-            indices.push_back(row1 + j + 1);
-            indices.push_back(row2 + j);
-            indices.push_back(row2 + j + 1);
+            indices.push_back(Index(row1 + j + 1));
+            indices.push_back(Index(row2 + j));
+            indices.push_back(Index(row2 + j + 1));
         }
     }
 
@@ -261,7 +261,7 @@ Mesh MeshFactory::buildSphere(MTL::Device* device,
     // Index buffer
     mesh.indexBuffer = device->newBuffer(
         indices.data(),
-        indices.size() * sizeof(uint16_t),
+        indices.size() * sizeof(Index),
         MTL::ResourceStorageModeManaged
     );
 
@@ -328,14 +328,14 @@ vertex_index_pair MeshFactory::buildCube2(MTL::Device *device, simd::float3 scal
         }
     }
 
-    std::vector<ushort> indices;
+    std::vector<Index> indices;
 
-    for(ushort i=0;i<6;i++){
-        ushort start = i * 4;
+    for(Index i=0;i<6;i++){
+        Index start = i * 4;
 
         indices.insert(indices.end(),{
-            start, static_cast<ushort>(start+ushort(1)), static_cast<ushort>(start+ushort(2)),
-            start, static_cast<ushort>(start+ushort(2)), static_cast<ushort>(start+ushort(3))
+            start, static_cast<Index>(start+Index(1)), static_cast<Index>(start+Index(2)),
+            start, static_cast<Index>(start+Index(2)), static_cast<Index>(start+Index(3))
         });
     }
 
@@ -358,7 +358,7 @@ vertex_index_pair MeshFactory::buildSphere2(MTL::Device* device,
 {
     vertex_index_pair mesh;
     std::vector<Vertex3D> vertices;
-    std::vector<uint16_t> indices;
+    std::vector<Index> indices;
 
     for (uint16_t i = 0; i <= stacks; ++i)
     {
@@ -392,13 +392,13 @@ vertex_index_pair MeshFactory::buildSphere2(MTL::Device* device,
             uint16_t row1 = i * (slices + 1);
             uint16_t row2 = (i + 1) * (slices + 1);
 
-            indices.push_back(row1 + j);
-            indices.push_back(row2 + j);
-            indices.push_back(row1 + j + 1);
+            indices.push_back(Index(row1 + j));
+            indices.push_back(Index(row2 + j));
+            indices.push_back(Index(row1 + j + 1));
 
-            indices.push_back(row1 + j + 1);
-            indices.push_back(row2 + j);
-            indices.push_back(row2 + j + 1);
+            indices.push_back(Index(row1 + j + 1));
+            indices.push_back(Index(row2 + j));
+            indices.push_back(Index(row2 + j + 1));
         }
     }
 
