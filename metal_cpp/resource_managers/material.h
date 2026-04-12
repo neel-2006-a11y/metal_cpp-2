@@ -30,4 +30,6 @@ struct Material
     
     std::vector<TextureBinding> textures;
     std::vector<SamplerBinding> samplers;
+    
+    MaterialUniforms uniforms;
 };

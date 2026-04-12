@@ -44,6 +44,9 @@
 
 #define FIF 3
 
+#define MAX_OBJECT 10
+#define MAX_MATERIALS 10
+
 struct Vertex {
     simd::float2 pos;
     simd::float3 color;
@@ -58,10 +61,19 @@ struct CameraUniforms{
 struct ObjectUniforms{
     simd::float4x4 model;
     simd::float4x4 invModel;
-    simd::float3 tileScale = simd::float3{1.0,1.0,1.0};
-    bool hasDiffuse;
+    float tileScale = 1.0;
 };
 
+#define DIFFUSE_SLOT 2
+
+struct MaterialUniforms{
+    int hasDiffuse = 0;
+    
+//    float roughness;
+//    float metallic;
+//    
+//    simd::float3 baseColor;
+};
 
 struct FrameUniforms{
     //--------------
@@ -89,6 +101,19 @@ struct FrameUniforms{
     // Dithering Uniforms
     //--------------
     float BayerScale; // should be in material uniforms, but here for now
+    
+    //--------------
+    // Volumetric Uniforms
+    //--------------
+    float volumeDensity;
+    float g; // HG Phase param
+};
+
+struct DebugSettings{
+    simd::float3 sunDirection = { 1.0f, 0.3f, 1.0f };
+    float BayerScale = 0.04;
+    float volumeDensity = 0.03;
+    float g = 0.6;
 };
 
 static uint BoidVersion = 2;

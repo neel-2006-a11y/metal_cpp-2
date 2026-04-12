@@ -20,9 +20,9 @@ public:
     int cascades = CASCADES;
     
     void execute(Renderer2& renderer) override;
+    void renderNode(SceneNode* node, Renderer2& renderer, MTL::RenderCommandEncoder* encoder) override;
     void release() override;
     
 private:
-    MTL::RenderCommandEncoder* encoders[CASCADES];
-    
+    MTL::RenderCommandEncoder* encoders[CASCADES] = {nullptr};
 };

@@ -13,6 +13,7 @@
 #include "resource_managers/material_manager.h"
 #include "resource_managers/pipeline_manager.h"
 #include "scene/RenderObject.h"
+#include "scene/SceneNode.h"
 
 class Renderer2{
 public:
@@ -33,23 +34,34 @@ public:
     
     MTL::CommandBuffer* cmd = nullptr;
     
+    // Frame Buffer
     MTL::Buffer* frameBuffer[FIF];
     size_t frameStride = 0;
     
+    // Object Buffer
     MTL::Buffer* objectBuffer[FIF];
-    int frameIndex = 0;
-    
     size_t objectStride = 0;
     size_t maxObjects = 0;
     
+    // Material Uniforms Buffer
+    MTL::Buffer* materialBuffer = nullptr;
+    size_t materialStride = 0;
+    size_t maxMaterials = 0;
+    int frameIndex = 0;
+    
     Scene* scene = nullptr;
+    SceneNode* root = nullptr;
     
     int curr_width, curr_height;
+    DebugSettings debug;
     
     void initFrameBuffer();
     void uploadFrameUniforms(FrameUniforms& frame);
     
     void initObjectBuffer(size_t maxObjCount);
-    void uploadAllObjectUniforms(const std::vector<RenderObject>& objects);
+    void uploadAllObjectUniforms(const std::vector<Entity>& objects);
+    void uploadObjectUniforms(const std::vector<ObjectUniforms>& objs);
     
+    void initMaterialBuffer(size_t maxMatCount);
+    void uploadAllMaterialUniforms(const std::vector<MaterialUniforms>& materials);
 };

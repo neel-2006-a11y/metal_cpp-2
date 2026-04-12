@@ -8,6 +8,9 @@
 #include "view/Engine.h"
 #include "view/mesh_factory.h"
 #include "backend/mtlm.h"
+#include "ImGui/imgui.h"
+#include "ImGui/imgui_impl_glfw.h"
+#include "ImGui/imgui_impl_metal.h"
 
 Engine::Engine(Renderer2* renderer) : renderer(renderer), pipelineManager(renderer->device, renderer->device->newDefaultLibrary()), camera(float(800)/600), mouseHandler(renderer->glfwWindow), keyboard(renderer->glfwWindow), modelLoader(&meshManager, &textureManager, &materialManager){
     renderer->textureManager = &textureManager;
@@ -15,6 +18,7 @@ Engine::Engine(Renderer2* renderer) : renderer(renderer), pipelineManager(render
     renderer->materialManager = &materialManager;
     renderer->pipelineManger = &pipelineManager;
     renderer->scene = &scene;
+    renderer->root = &root;
 }
 
 void Engine::init(){
@@ -90,6 +94,12 @@ void Engine::init(){
     halftone_textureID = textureManager.loadPPMArray(filenames, halftone_desc);
     
     //--------------
+    // Load Blue Noise
+    //--------------
+    std::string blueNoiseFile = "/Users/admin/Desktop/metal_cpp-2/metal_cpp/assets/BlueNoise470.png";
+    blueNoiseTextureID = textureManager.loadFromFile(blueNoiseFile);
+    
+    //--------------
     // build ShadowMap Texture
     //--------------
     TextureDesc shadowMap_desc;
@@ -100,18 +110,6 @@ void Engine::init(){
     shadowMap_desc.height = shadow_res;
     shadowMap_desc.layers = CASCADES;
     shadowMapID = textureManager.createEmpty(shadowMap_desc);
-    
-//    //--------------
-//    // build Depth Texture
-//    //--------------
-//    TextureDesc depth_Desc;
-//    depth_Desc.format = TextureFormat::Depth32Float;
-//    depth_Desc.usage = TextureUsage::DepthStencil;
-//    depth_Desc.storageMode = StorageMode::Private;
-//    depth_Desc.width = curr_width;
-//    depth_Desc.height = curr_height;
-//    depthTextureID = textureManager.createEmpty(depth_Desc);
-    
     
     // Samplers
     MTL::SamplerDescriptor* halftone_sampler_desc = MTL::SamplerDescriptor::alloc()->init();
@@ -146,6 +144,7 @@ void Engine::init(){
     volumetricPass.shadowMap = shadowMapID;
     volumetricPass.volumetricPipeID = volumetricPipelineID;
     volumetricPass.sampler = shadowMap_sampler;
+    volumetricPass.blueNoiseTexture = blueNoiseTextureID;
     
     compositePass.pipeline = compositePipelineID;
     
@@ -156,58 +155,116 @@ void Engine::init(){
     renderGraph.addPass(&mainPass);
     renderGraph.addPass(&volumetricPass);
     renderGraph.addPass(&compositePass);
+    renderGraph.addPass(&imGuiPass);
     
+    
+    
+    //--------------
+    // load Meshes from Mesh Factory
+    //--------------
+    vertex_index_pair curtainData = MeshFactory::buildCube2(renderer->device, simd::float3{35,35,5});
+    MeshID curtainMesh = meshManager.createMesh(curtainData.vertexData.data(), curtainData.vertexData.size(), curtainData.indexData);
+    
+    vertex_index_pair cubeData = MeshFactory::buildCube2(renderer->device, simd::float3{5,5,5});
+    MeshID cubeMesh = meshManager.createMesh(cubeData.vertexData.data(), cubeData.vertexData.size(), cubeData.indexData);
+    
+    vertex_index_pair sphereData = MeshFactory::buildSphere2(renderer->device, 16, 16, 1);
+    MeshID sphereMesh = meshManager.createMesh(sphereData.vertexData.data(), sphereData.vertexData.size(), sphereData.indexData);
     
     //--------------
     // setup Scene (eventually a manager for this too)
     //--------------
-    RenderObject curtain;
-    vertex_index_pair curtainData = MeshFactory::buildCube2(renderer->device, simd::float3{35,35,5});
-    MeshID curtainMesh = meshManager.createMesh(curtainData.vertexData.data(), curtainData.vertexData.size(), curtainData.indexData);
+    // root
+    //  |-->cube
+    //  |-->curtain
+    //  |-->sphere
+    //  |-->Cactus
+    //       |-->flower
+    //       |-->pot
+    //       |-->cactus
+    //--------------
+    root.name = "Root";
+    
+    //--------------
+    SceneNode* curtainNode = createNode(&root);
+    curtainNode->name = "Curtain";
+
+    curtainNode->renderObject = new RenderObject();
+    curtainNode->renderObject->meshID = curtainMesh;
+    curtainNode->renderObject->materialID = halftoneMaterialID;
+    curtainNode->renderObject->tileScale = 0.75;
+
+    curtainNode->localT.position = {0, 0, 20};
+    
+    //--------------
+    SceneNode* cubeNode = createNode(&root);
+    cubeNode->name = "Cube";
+
+    cubeNode->renderObject = new RenderObject();
+    cubeNode->renderObject->meshID = cubeMesh;
+    cubeNode->renderObject->materialID = halftoneMaterialID;
+    cubeNode->renderObject->tileScale = 0.75;
+
+    cubeNode->localT.position = {-5, 0, 15};
+    cubeNode->localT.scale = {2.0,1.0,1.0};
+    
+    //--------------
+    SceneNode* sphereNode = createNode(&root);
+    sphereNode->name = "Sphere";
+    
+    sphereNode->renderObject = new RenderObject();
+    sphereNode->renderObject->meshID = sphereMesh;
+    sphereNode->renderObject->materialID = halftoneMaterialID;
+    sphereNode->renderObject->tileScale = 0.75;
+    
+    sphereNode->localT.position = {5, 0, 15};
+    
+    //--------------
+    SceneNode* cactusNode = modelLoader.loadModelAsNode(assetDirectory + "/test_cactus/test_cactus.obj");
+    assignParent(cactusNode, &root);
+    assignPipelineID(cactusNode, halftone_pipeID, materialManager);
+    
+    
+    //--------------
+    //--------------
+    //--------------
+    Entity curtainE;
+    RenderObject& curtain = curtainE.renderObject;
     curtain.meshID = curtainMesh;
     curtain.materialID = halftoneMaterialID;
+    curtain.tileScale = 0.75;
     
-    curtain.uniforms.model = mtlm::identity();
-    curtain.uniforms.model *= mtlm::translation({0, 0, 20});
-    curtain.uniforms.invModel = simd_inverse(curtain.uniforms.model);
-    curtain.uniforms.tileScale *= 0.75;
-    curtain.uniforms.hasDiffuse = false;
-    scene.objects.push_back(curtain);
+    curtainE.transform.position = {0,0,20};
+    scene.objects.push_back(curtainE);
     
+    Entity cubeE;
+    RenderObject& cube = cubeE.renderObject;
     
-    RenderObject cube;
-    vertex_index_pair cubeData = MeshFactory::buildCube2(renderer->device, simd::float3{5,5,5});
-    MeshID cubeMesh = meshManager.createMesh(cubeData.vertexData.data(), cubeData.vertexData.size(), cubeData.indexData);
     cube.meshID = cubeMesh;
     cube.materialID = halftoneMaterialID;
+    cube.tileScale = 0.75;
     
-    cube.uniforms.model = mtlm::identity();
-    cube.uniforms.model *= mtlm::translation({-5, 0, 15});
-    cube.uniforms.invModel = simd_inverse(cube.uniforms.model);
-    cube.uniforms.tileScale *= 0.75;
-    cube.uniforms.hasDiffuse = false;
-    scene.objects.push_back(cube);
+    cubeE.transform.position = {-5, 0, 15};
+    scene.objects.push_back(cubeE);
     
-    RenderObject sphere;
-    vertex_index_pair sphereData = MeshFactory::buildSphere2(renderer->device, 16, 16, 1);
-    MeshID sphereMesh = meshManager.createMesh(sphereData.vertexData.data(), sphereData.vertexData.size(), sphereData.indexData);
+    
+    Entity sphereE;
+    RenderObject& sphere = sphereE.renderObject;
+    
     sphere.meshID = sphereMesh;
     sphere.materialID = halftoneMaterialID;
+    sphere.tileScale = 0.75;
     
-    sphere.uniforms.model = mtlm::identity();
-    sphere.uniforms.model *= mtlm::translation({5, 0, 10});
-    sphere.uniforms.invModel = simd_inverse(sphere.uniforms.model);
-    sphere.uniforms.tileScale *= 0.75;
-    sphere.uniforms.hasDiffuse = false;
-    scene.objects.push_back(sphere);
+    sphereE.transform.position = {5, 0, 10};
+    scene.objects.push_back(sphereE);
     
     // cactus
     size_t in_ind = scene.objects.size();
     modelLoader.loadModel( assetDirectory + "/test_cactus/test_cactus.obj", &scene);
     size_t fin_ind = scene.objects.size()-1;
     for(size_t i = in_ind; i<=fin_ind; i++){
-        materialManager.setPipeline(scene.objects[i].materialID, halftone_pipeID);
-        scene.objects[i].uniforms.hasDiffuse = true;
+        materialManager.setPipeline(scene.objects[i].renderObject.materialID, halftone_pipeID);
+        scene.objects[i].renderObject.tileScale = 1.0;
     }
     
     // sun
@@ -221,6 +278,17 @@ void Engine::init(){
     //--------------
     renderer->initObjectBuffer(scene.objects.size());
     renderer->initFrameBuffer();
+    renderer->initMaterialBuffer(MAX_MATERIALS);
+    
+    //--------------
+    // ImGui init
+    //--------------
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    
+    
+    ImGui_ImplGlfw_InitForOther(renderer->glfwWindow, true);
+    ImGui_ImplMetal_Init(renderer->device);
 }
 
 
@@ -239,6 +307,7 @@ void Engine::update(){
     frameU.invViewProj = inverse(frameU.viewProj);
     
     frameU.intensity = sun.intensity;
+    sun.direction = simd::normalize(renderer->debug.sunDirection);
     frameU.direction = sun.direction;
     frameU.color = sun.color;
     frameU.cascades = sun.cascades;
@@ -251,7 +320,10 @@ void Engine::update(){
     
     memcpy(frameU.sunVPs, sunVps.data(), sizeof(simd::float4x4) * CASCADES);
     memcpy(frameU.cascadeSplits, cascadeSplits.data(), sizeof(float) * CASCADES);
-    frameU.BayerScale = 0.04;
+    frameU.BayerScale = renderer->debug.BayerScale;
+    
+    frameU.volumeDensity = renderer->debug.volumeDensity;
+    frameU.g = renderer->debug.g;
 }
 
 void Engine::render(){
@@ -273,23 +345,46 @@ void Engine::render(){
     compositePass.volumeColor = volumetricTextureID;
     compositePass.drawableTexture = drawable->texture();
     
-//    std::cout << drawable->texture()->pixelFormat() << std::endl;
-    //PixelFormatBGRA8Unorm_sRGB
-//    std::cout << renderer->metalLayer->drawableSize().width << " " << renderer->metalLayer->drawableSize().height << std::endl;
-    renderer->frameIndex = (renderer->frameIndex + 1) % FIF;
+    imGuiPass.root = &root;
+    imGuiPass.selected = selected;
+    imGuiPass.drawableTexture = drawable->texture();
     
     renderer->cmd = renderer->commandQueue->commandBuffer();
     
+    //----------
+    // upload Buffers
+    //----------
+    renderer->frameIndex = (renderer->frameIndex + 1) % FIF;
+    
+    // frame
     renderer->uploadFrameUniforms(frameU);
-    renderer->uploadAllObjectUniforms(scene.objects);
     
-//    mainPass.drawableTexture = drawable->texture();
+    // object
+//    renderer->uploadAllObjectUniforms(scene.objects);
+    //
+    std::vector<ObjectUniforms> objs;
+    uint32_t index = 0;
+    buildObjectBuffer(&root, objs, index);
+    renderer->uploadObjectUniforms(objs);
     
+    // material
+    auto matUniforms = materialManager.getAllUniforms();
+    renderer->uploadAllMaterialUniforms(matUniforms);
+    
+    //----------
+    // Execute
+    //----------
     renderGraph.execute(*renderer);
     renderer->cmd->presentDrawable(drawable);
     renderer->cmd->commit();
     renderer->cmd->waitUntilCompleted();
     renderGraph.release();
+    
+    //----------
+    // fetch selected node for future
+    //----------
+    selected = imGuiPass.selected;
+    
 }
 
 void Engine::handleKeyboard(){

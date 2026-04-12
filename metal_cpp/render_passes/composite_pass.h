@@ -19,5 +19,5 @@ public:
     void release() override;
     
 private:
-    MTL::RenderCommandEncoder* encoder;
+    MTL::RenderCommandEncoder* encoder = nullptr;
 };

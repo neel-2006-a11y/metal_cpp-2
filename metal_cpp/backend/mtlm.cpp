@@ -38,9 +38,20 @@ simd::float4x4 mtlm::y_rotation(float theta){
     theta = theta * M_PI / 180.0f;
     float c = cosf(theta);
     float s = sinf(theta);
-    simd_float4 col0 = { c, 0.0, s, 0.0f};
+    simd_float4 col0 = { -s, 0.0, c, 0.0f};
     simd_float4 col1 = { 0.0, 1.0, 0.0f, 0.0f};
-    simd_float4 col2 = { -s, 0.0f, c, 0.0f};
+    simd_float4 col2 = { c, 0.0f, s, 0.0f};
+    simd_float4 col3 = { 0.0f, 0.0f, 0.0f, 1.0f};
+    return simd_matrix(col0, col1, col2, col3);
+}
+
+simd::float4x4 mtlm::x_rotation(float theta){
+    theta = theta * M_PI / 180.0f;
+    float c = cosf(theta);
+    float s = sinf(theta);
+    simd_float4 col0 = { 1.0, 0.0, 0.0, 0.0f};
+    simd_float4 col1 = { 0.0, c, s, 0.0f};
+    simd_float4 col2 = { 0.0, -s, c, 0.0f};
     simd_float4 col3 = { 0.0f, 0.0f, 0.0f, 1.0f};
     return simd_matrix(col0, col1, col2, col3);
 }

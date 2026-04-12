@@ -6,8 +6,10 @@
 //
 
 #include "view/renderer2.h"
+#include "backend/mtlm.h"
 
 inline size_t align256(size_t size) {
+    return size;
     return (size + 255) & ~255;
 }
 
@@ -47,11 +49,54 @@ void Renderer2::initObjectBuffer(size_t maxObjCount){
     }
 }
 
-void Renderer2::uploadAllObjectUniforms(const std::vector<RenderObject> &objects){
+void Renderer2::uploadAllObjectUniforms(const std::vector<Entity> &objects){
+    
+    assert(objects.size() <= maxObjects);
+    
     MTL::Buffer* buffer = objectBuffer[frameIndex];
     uint8_t* base = (uint8_t*) buffer->contents();
     
     for(size_t i = 0; i<objects.size(); i++){
-        memcpy(base + i * objectStride, &objects[i].uniforms, sizeof(ObjectUniforms));
+        // build object uniforms
+        ObjectUniforms uniforms;
+        
+        uniforms.model = objects[i].transform.computeModel();
+        uniforms.invModel = simd::inverse(uniforms.model);
+        uniforms.tileScale = objects[i].renderObject.tileScale;
+        
+        memcpy(base + i * objectStride, &uniforms, sizeof(ObjectUniforms));
+    }
+}
+
+void Renderer2::uploadObjectUniforms(const std::vector<ObjectUniforms> &objs){
+    assert(objs.size() <= maxObjects);
+    
+    MTL::Buffer* buffer = objectBuffer[frameIndex];
+    uint8_t* base = (uint8_t*)buffer->contents();
+    
+    for (size_t i=0; i<objs.size(); i++) {
+        memcpy(base + i*objectStride, &objs[i], sizeof(ObjectUniforms));
+    }
+}
+
+
+void Renderer2::initMaterialBuffer(size_t maxMatCount){
+    
+    maxMaterials = maxMatCount;
+    materialStride = align256(sizeof(MaterialUniforms));
+    
+    size_t totalSize = materialStride * maxMatCount;
+    
+    materialBuffer = device->newBuffer(totalSize, MTL::ResourceStorageModeShared);
+}
+
+void Renderer2::uploadAllMaterialUniforms(const std::vector<MaterialUniforms>& materials){
+    
+    assert(materials.size() <= maxMaterials);
+    
+    uint8_t* base = (uint8_t*)materialBuffer->contents();
+    
+    for(size_t i=0; i<materials.size(); i++){
+        memcpy(base + i * materialStride, &materials[i], sizeof(MaterialUniforms));
     }
 }

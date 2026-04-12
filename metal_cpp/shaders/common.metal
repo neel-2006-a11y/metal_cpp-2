@@ -30,8 +30,16 @@ struct VertexOutput3D_2{
 struct ObjectUniforms_2{
     float4x4 model;
     float4x4 invModel;
-    float3 tileScale;
-    bool hasDiffuse;
+    float tileScale;
+};
+
+struct MaterialUniforms{
+    int hasDiffuse;
+    
+//    float roughness;
+//    float metallic;
+//
+//    simd::float3 baseColor;
 };
 
 struct FrameUniforms_2{
@@ -51,6 +59,9 @@ struct FrameUniforms_2{
     float cascadeSplits[CASCADES];
     
     float BayerScale;
+    
+    float volumeDensity;
+    float g;
 };
 
 static inline int select_cascade_2(float viewDepth, constant float* cascadeSplits, int num_cascades){

@@ -26,15 +26,16 @@ VertexOutput3D_2 vertex vertexMain3D_dither_2(VertexInput3D_2 in [[stage_in]],
 }
 
 float4 fragment fragmentMain3D_dither_2(
-                                      VertexOutput3D_2 in [[stage_in]],
-                                      texture2d_array<float> shadowMap [[texture(0)]],
-                                      sampler shadowSampler [[sampler(0)]],
-                                      texture2d_array<half> halftoneTex [[texture(1)]],
-                                      sampler halftoneSampler [[sampler(1)]],
-                                      texture2d<float> diffuse [[texture(2)]],
-                                      constant FrameUniforms_2& frame [[buffer(1)]],
-                                      constant ObjectUniforms_2& object [[buffer(2)]]
-                                      ){
+                                    VertexOutput3D_2 in [[stage_in]],
+                                    texture2d_array<float> shadowMap [[texture(0)]],
+                                    sampler shadowSampler [[sampler(0)]],
+                                    texture2d_array<half> halftoneTex [[texture(1)]],
+                                    sampler halftoneSampler [[sampler(1)]],
+                                    texture2d<float> diffuse [[texture(2)]],
+                                    constant FrameUniforms_2& frame [[buffer(1)]],
+                                    constant ObjectUniforms_2& object [[buffer(2)]],
+                                    constant MaterialUniforms& material [[buffer(3)]]
+                                    ){
     float3 N = normalize(in.normal);
     float3 V = normalize(frame.cameraPos - in.worldPos);
 
@@ -50,7 +51,7 @@ float4 fragment fragmentMain3D_dither_2(
     float shadow = shadowCalculationCSM_dither_2(in.worldPos, shadowMap, shadowSampler, frame.sunVPs[selected_cascade], selected_cascade);
     
     float3 diffuse_color = float3(1.0);
-    if(object.hasDiffuse)
+    if(material.hasDiffuse)
         diffuse_color = diffuse.sample(halftoneSampler, in.uv).xyz;
     
     float3 light =
@@ -75,7 +76,7 @@ float4 fragment fragmentMain3D_dither_2(
     
     float pixelCoverage = max(length(duvdx), length(duvdy));
     pixelCoverage = max(pixelCoverage, 1e-6);
-    float scale = (frame.BayerScale * object.tileScale.x / pixelCoverage) * sqrt(luminance);
+    float scale = (frame.BayerScale * object.tileScale / pixelCoverage) * sqrt(luminance);
     
     scale = clamp(scale, MinAdapt * sqrt(luminance), MaxAdapt * sqrt(luminance));
     float log_scale = log2(scale);

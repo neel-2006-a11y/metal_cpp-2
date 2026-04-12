@@ -16,8 +16,11 @@ public:
     MaterialID createMaterial(PipelineID pipeline);
     
     void setTexture(MaterialID mat, uint32_t slot, TextureID tex);
+    void setDiffuseTexture(MaterialID mat, TextureID tex);
     void setSampler(MaterialID mat, uint32_t slot, void* sampler);
     void setPipeline(MaterialID mat, PipelineID pipeline);
+    
+    std::vector<MaterialUniforms> getAllUniforms();
     
     Material* get(MaterialID id);
     

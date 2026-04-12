@@ -54,32 +54,39 @@ void MainPass::execute(Renderer2 &r){
     encoder->setViewport(viewPort);
     
     // Draw everything
-    MTL::Buffer* objBuffer = r.objectBuffer[r.frameIndex];
-    int ind = 0;
-    for(auto& obj : r.scene->objects){
-        Mesh2* mesh = r.meshManager->getMesh(obj.meshID);
-        Material* mat = r.materialManager->get(obj.materialID);
-        
-        uploadMeshToGPU(*mesh, r.device);
-        
-        encoder->setRenderPipelineState(r.pipelineManger->get(mat->pipeID));
-        
-        size_t offset = ind * r.objectStride;
-        
-        encoder->setVertexBuffer(objBuffer, offset, 2);
-        encoder->setFragmentBuffer(objBuffer, offset, 2);
-        
-        bindMaterial(*mat, encoder, *r.textureManager, r.device);
-        
-        encoder->setVertexBuffer((MTL::Buffer*)mesh->vertexBuffer, 0, 0);
-        
-        encoder->drawIndexedPrimitives(MTL::PrimitiveTypeTriangle, mesh->indexCount, INDEX_FORMAT, (MTL::Buffer*)mesh->indexBuffer, 0, 1);
-        ind++;
-    }
+    renderNode(r.root, r, encoder);
+    
     encoder->endEncoding();
     rp->release();
     depthDesc->release();
     depthState->release();
+}
+
+void MainPass::renderNode(SceneNode *node, Renderer2 &renderer, MTL::RenderCommandEncoder *encoder){
+    if(node->renderObject){
+        auto* objBuffer = renderer.objectBuffer[renderer.frameIndex];
+        Mesh2* mesh = renderer.meshManager->getMesh(node->renderObject->meshID);
+        Material* mat = renderer.materialManager->get(node->renderObject->materialID);
+        
+        uploadMeshToGPU(*mesh, renderer.device);
+        
+        encoder->setRenderPipelineState(renderer.pipelineManger->get(mat->pipeID));
+        
+        size_t offset = node->renderObject->objectIndex * renderer.objectStride;
+        
+        encoder->setVertexBuffer(objBuffer, offset, 2);
+        encoder->setFragmentBuffer(objBuffer, offset, 2);
+        
+        bindMaterial(node->renderObject->materialID, *mat, encoder, *renderer.textureManager, renderer);
+        
+        encoder->setVertexBuffer((MTL::Buffer*)mesh->vertexBuffer, 0, 0);
+        
+        encoder->drawIndexedPrimitives(MTL::PrimitiveTypeTriangle, mesh->indexCount, INDEX_FORMAT, (MTL::Buffer*)mesh->indexBuffer, 0, 1);
+    }
+    
+    for(auto* child : node->children){
+        renderNode(child, renderer, encoder);
+    }
 }
 
 void MainPass::release(){

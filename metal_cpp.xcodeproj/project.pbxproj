@@ -10,6 +10,12 @@
 		84069A072F1646A1000BB6ED /* MetalKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 84069A062F1646A1000BB6ED /* MetalKit.framework */; };
 		84069A092F1646A8000BB6ED /* AppKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 84069A082F1646A8000BB6ED /* AppKit.framework */; };
 		84069A0B2F1646B5000BB6ED /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 84069A0A2F1646B5000BB6ED /* Metal.framework */; };
+		8455A2B82F83037F00D133E9 /* imgui_impl_glfw.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8455A2B52F83037F00D133E9 /* imgui_impl_glfw.cpp */; };
+		8455A2B92F83037F00D133E9 /* imgui_tables.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8455A2B62F83037F00D133E9 /* imgui_tables.cpp */; };
+		8455A2BA2F83037F00D133E9 /* imgui_widgets.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8455A2B72F83037F00D133E9 /* imgui_widgets.cpp */; };
+		8455A2BB2F83037F00D133E9 /* imgui.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8455A2B32F83037F00D133E9 /* imgui.cpp */; };
+		8455A2BC2F83037F00D133E9 /* imgui_draw.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8455A2B42F83037F00D133E9 /* imgui_draw.cpp */; };
+		8455A2BE2F8303BF00D133E9 /* imgui_impl_metal.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8455A2BD2F8303BF00D133E9 /* imgui_impl_metal.mm */; };
 		8486C84F2F1ADA81009F385E /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8486C84E2F1ADA81009F385E /* QuartzCore.framework */; };
 		84AE9FE72F7D491100FC9F4C /* libassimp.6.0.2.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 84AE9FE52F7D471A00FC9F4C /* libassimp.6.0.2.dylib */; };
 /* End PBXBuildFile section */
@@ -31,6 +37,12 @@
 		84069A062F1646A1000BB6ED /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
 		84069A082F1646A8000BB6ED /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = System/Library/Frameworks/AppKit.framework; sourceTree = SDKROOT; };
 		84069A0A2F1646B5000BB6ED /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
+		8455A2B32F83037F00D133E9 /* imgui.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = imgui.cpp; path = dependencies/ImGui/imgui.cpp; sourceTree = SOURCE_ROOT; };
+		8455A2B42F83037F00D133E9 /* imgui_draw.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = imgui_draw.cpp; path = dependencies/ImGui/imgui_draw.cpp; sourceTree = SOURCE_ROOT; };
+		8455A2B52F83037F00D133E9 /* imgui_impl_glfw.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = imgui_impl_glfw.cpp; path = dependencies/ImGui/imgui_impl_glfw.cpp; sourceTree = SOURCE_ROOT; };
+		8455A2B62F83037F00D133E9 /* imgui_tables.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = imgui_tables.cpp; path = dependencies/ImGui/imgui_tables.cpp; sourceTree = SOURCE_ROOT; };
+		8455A2B72F83037F00D133E9 /* imgui_widgets.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = imgui_widgets.cpp; path = dependencies/ImGui/imgui_widgets.cpp; sourceTree = SOURCE_ROOT; };
+		8455A2BD2F8303BF00D133E9 /* imgui_impl_metal.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = imgui_impl_metal.mm; path = dependencies/ImGui/imgui_impl_metal.mm; sourceTree = SOURCE_ROOT; };
 		8486C84E2F1ADA81009F385E /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
 		84AE9FE52F7D471A00FC9F4C /* libassimp.6.0.2.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libassimp.6.0.2.dylib; path = dependencies/assimp/lib/libassimp.6.0.2.dylib; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -65,6 +77,7 @@
 		840699F22F164241000BB6ED = {
 			isa = PBXGroup;
 			children = (
+				8455A2B22F83035400D133E9 /* New Group */,
 				840699FD2F164241000BB6ED /* metal_cpp */,
 				84069A052F1646A1000BB6ED /* Frameworks */,
 				840699FC2F164241000BB6ED /* Products */,
@@ -89,6 +102,19 @@
 				84069A062F1646A1000BB6ED /* MetalKit.framework */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		8455A2B22F83035400D133E9 /* New Group */ = {
+			isa = PBXGroup;
+			children = (
+				8455A2BD2F8303BF00D133E9 /* imgui_impl_metal.mm */,
+				8455A2B32F83037F00D133E9 /* imgui.cpp */,
+				8455A2B42F83037F00D133E9 /* imgui_draw.cpp */,
+				8455A2B52F83037F00D133E9 /* imgui_impl_glfw.cpp */,
+				8455A2B62F83037F00D133E9 /* imgui_tables.cpp */,
+				8455A2B72F83037F00D133E9 /* imgui_widgets.cpp */,
+			);
+			path = "New Group";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -155,6 +181,12 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8455A2B82F83037F00D133E9 /* imgui_impl_glfw.cpp in Sources */,
+				8455A2B92F83037F00D133E9 /* imgui_tables.cpp in Sources */,
+				8455A2BA2F83037F00D133E9 /* imgui_widgets.cpp in Sources */,
+				8455A2BB2F83037F00D133E9 /* imgui.cpp in Sources */,
+				8455A2BC2F83037F00D133E9 /* imgui_draw.cpp in Sources */,
+				8455A2BE2F8303BF00D133E9 /* imgui_impl_metal.mm in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -172,6 +204,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
 				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_LINK_OBJC_RUNTIME = NO;
 				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
 				CLANG_WARN_BOOL_CONVERSION = YES;
 				CLANG_WARN_COMMA = YES;
@@ -233,6 +266,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
 				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_LINK_OBJC_RUNTIME = NO;
 				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
 				CLANG_WARN_BOOL_CONVERSION = YES;
 				CLANG_WARN_COMMA = YES;

@@ -13,11 +13,13 @@
 #include "render_passes/main_pass.h"
 #include "render_passes/composite_pass.h"
 #include "render_passes/volumetric_pass.h"
+#include "render_passes/imgui_pass.h"
 #include "view/directional_light.h"
 #include "view/camera.h"
 #include "view/mouseHandler.h"
 #include "view/KeyBoardHandler.h"
 #include "resource_managers/ModelLoader.h"
+#include "scene/SceneNode.h"
 
 class Engine
 {
@@ -35,8 +37,8 @@ private:
     double lastTime = 0, currTime = 0;
     // screen dimensions
     int curr_width = 0, curr_height = 0;
-    int shadow_res = 2048;
-    int volumeDownFact = 2;
+    int shadow_res = 512;
+    int volumeDownFact = 4;
     
     Renderer2* renderer;
     
@@ -45,8 +47,12 @@ private:
     Camera camera;
     MouseHandler mouseHandler;
     KeyBoardHandler keyboard;
-    Scene scene;
     DirectionalLight sun;
+    
+    // scene
+    Scene scene;
+    SceneNode root;
+    SceneNode* selected = nullptr;
     
     // managers
     TextureManager textureManager;
@@ -71,6 +77,7 @@ private:
     TextureID depthTextureID;
     TextureID sceneColorTextureID;
     TextureID volumetricTextureID;
+    TextureID blueNoiseTextureID;
     
     // materials
     MaterialID halftoneMaterialID;
@@ -82,6 +89,7 @@ private:
     MainPass mainPass;
     VolumetricPass volumetricPass;
     CompositePass compositePass;
+    ImGuiPass imGuiPass;
     
     
     FrameUniforms frameU;

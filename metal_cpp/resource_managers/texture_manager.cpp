@@ -250,7 +250,7 @@ TextureID TextureManager::loadFromFile(const std::string& path){
     
     if(channels == 1){
         format = TextureFormat::R8Unorm;
-    }else if(channels == 3){
+    }else if(channels == 3 || channels == 4){
         format = TextureFormat::RGBA8Unorm;
     }else{
         printf("Unsupported channel count: %d\n", channels);

@@ -17,6 +17,7 @@ public:
     TextureID sceneColorTexture;
     
     void execute(Renderer2& r) override;
+    void renderNode(SceneNode* node, Renderer2& renderer, MTL::RenderCommandEncoder* encoder) override;
     void release() override;
 private:
     MTL::RenderCommandEncoder* encoder = nullptr;

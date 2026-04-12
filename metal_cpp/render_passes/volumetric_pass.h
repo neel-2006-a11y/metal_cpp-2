@@ -13,6 +13,7 @@ public:
     TextureID depthTexture;
     TextureID shadowMap;
     TextureID volumetricColorTexture;
+    TextureID blueNoiseTexture;
     
     MTL::SamplerState* sampler;
     

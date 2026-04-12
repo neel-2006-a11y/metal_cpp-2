@@ -33,6 +33,19 @@ void MaterialManager::setTexture(MaterialID id, uint32_t slot, TextureID tex){
     mat.textures.push_back({slot, tex});
 }
 
+void MaterialManager::setDiffuseTexture(MaterialID id, TextureID tex){
+    auto& mat = materials[id];
+    for(auto& t : mat.textures){
+        if(t.slot == DIFFUSE_SLOT){
+            t.texture = tex;
+            return;
+        }
+    }
+    
+    mat.textures.push_back({DIFFUSE_SLOT, tex});
+    mat.uniforms.hasDiffuse = 1;
+}
+
 void MaterialManager::setSampler(MaterialID id, uint32_t slot, void* sampler){
     auto& mat = materials[id];
     
@@ -56,4 +69,17 @@ Material* MaterialManager::get(MaterialID id)
 void MaterialManager::setPipeline(MaterialID id, PipelineID pipeline){
     auto& mat = materials[id];
     mat.pipeID = pipeline;
+}
+
+
+std::vector<MaterialUniforms> MaterialManager::getAllUniforms(){
+    std::vector<MaterialUniforms> uniforms;
+    
+    uniforms.resize(materials.size());
+    
+    for(auto& mat : materials){
+        uniforms[mat.first - 1] = mat.second.uniforms; // zero_based_indexing
+    }
+    
+    return uniforms;
 }
