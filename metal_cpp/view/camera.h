@@ -24,15 +24,24 @@ public:
     // Resize
     void setAspect(float aspect);
     
+    // Orientation
+    simd::float3 forward() const;
+    simd::float3 right() const;
+    simd::float3 up() const;
+    
+    // Matrices
     simd::float4x4 view() const;
     simd::float4x4 projection() const;
     simd::float4x4 viewProjection() const;
     
     simd::float3 position() const {return pos;}
+    
     bool relativeMouse = false;
     
+    // ShadowMap helpers
     std::vector<float> computeCascadeSplits(int num_cascades, float lambda);
     std::vector<worldFrustrum> computeCascadeFrustrums(std::vector<float> cascadeSplits);
+    
 private:
     // state
     simd::float3 pos;
@@ -46,9 +55,4 @@ private:
     float aspect;
     float nearZ;
     float farZ;
-    
-    // Internal helpers
-    simd::float3 forward() const;
-    simd::float3 right() const;
-    simd::float3 up() const;
 };

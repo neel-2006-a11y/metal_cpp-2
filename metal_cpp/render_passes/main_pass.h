@@ -16,9 +16,10 @@ public:
     TextureID depthTexture;
     TextureID sceneColorTexture;
     
-    void execute(Renderer2& r) override;
-    void renderNode(SceneNode* node, Renderer2& renderer, MTL::RenderCommandEncoder* encoder) override;
-    void release() override;
+    void init() override;
+    void execute(RenderContext renderContext) override;
+    void renderNode(SceneNode* node, RenderContext renderContext, MTL::RenderCommandEncoder* encoder);
 private:
     MTL::RenderCommandEncoder* encoder = nullptr;
+    MTL::RenderPassDescriptor* rpDesc = nullptr;
 };

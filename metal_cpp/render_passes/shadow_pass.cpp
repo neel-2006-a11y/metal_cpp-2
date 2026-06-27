@@ -10,81 +10,59 @@
 #include "passers/MTL_Mesh_passer.h"
 #include "config.h"
 
-void ShadowPass::execute(Renderer2 &renderer){
-    auto* device = renderer.device;
-    auto* cmd = renderer.cmd;
+void ShadowPass::init(){
+    for(int i=0; i < CASCADES; i++){
+        rpDescs[i] = MTL::RenderPassDescriptor::alloc()->init();
+        rpDescs[i]->depthAttachment()->setSlice(i);
+        rpDescs[i]->depthAttachment()->setLoadAction(MTL::LoadActionClear);
+        rpDescs[i]->depthAttachment()->setStoreAction(MTL::StoreActionStore);
+        rpDescs[i]->depthAttachment()->setClearDepth(1.0);
+    }
+}
+
+void ShadowPass::execute(RenderContext renderContext){
     
-    Texture* shadowTex = renderer.textureManager->get(shadowMapArray);
-    uploadTextureToGPU(*shadowTex, device);
+    Texture* shadowTex = renderContext.textureManager->get(shadowMapArray);
+    uploadTextureToGPU(*shadowTex, renderContext.renderer->device);
     
-    MTL::RenderPipelineState* rp = renderer.pipelineManger->get(shadowPipeline);
+    MTL::RenderPipelineState* rp = renderContext.pipelineManager->get(shadowPipeline);
     
     auto* mtlTex = (MTL::Texture*)shadowTex->gpuTexture;
     
     for(int i = 0; i<cascades; i++){
-        MTL::RenderPassDescriptor* rpDesc = MTL::RenderPassDescriptor::alloc()->init();
         
-        rpDesc->depthAttachment()->setTexture(mtlTex);
-        rpDesc->depthAttachment()->setSlice(i);
-        rpDesc->depthAttachment()->setLoadAction(MTL::LoadActionClear);
-        rpDesc->depthAttachment()->setStoreAction(MTL::StoreActionStore);
-        rpDesc->depthAttachment()->setClearDepth(1.0);
+        rpDescs[i]->depthAttachment()->setTexture(mtlTex);
         
-        encoders[i] = cmd->renderCommandEncoder(rpDesc)->retain();
+        encoders[i] = renderContext.renderer->cmd->renderCommandEncoder(rpDescs[i]);
         auto* encoder = encoders[i];
         
         // Pipeline
         encoder->setRenderPipelineState(rp);
         
         // depth state
-        MTL::DepthStencilDescriptor* depthDesc = MTL::DepthStencilDescriptor::alloc()->init();
-        depthDesc->setDepthCompareFunction(MTL::CompareFunctionLess);
-        depthDesc->setDepthWriteEnabled(true);
-        MTL::DepthStencilState* depthState = device->newDepthStencilState(depthDesc);
-        depthDesc->release();
-        encoder->setDepthStencilState(depthState);
+        encoder->setDepthStencilState(renderContext.renderer->depthState);
         
         // Frame Buffer
-        encoder->setVertexBuffer(renderer.frameBuffer[renderer.frameIndex], 0, 1);
+        encoder->setVertexBuffer(renderContext.renderer->frameBuffer[renderContext.renderer->frameIndex], 0, 1);
         
         // cascade Index
         uint32_t cascadeInd = i;
         encoder->setVertexBytes(&cascadeInd, sizeof(uint32_t), 3);
         
-        // Draw all objects
-//        MTL::Buffer* objBuffer = renderer.objectBuffer[renderer.frameIndex];
-//        int ind = 0;
-//        for(auto& obj : renderer.scene->objects)
-//        {
-//            Mesh2* mesh = renderer.meshManager->getMesh(obj.renderObject.meshID);
-//            uploadMeshToGPU(*mesh, renderer.device);
-//            
-//            size_t offset = ind * renderer.objectStride;
-//            
-//            encoder->setVertexBuffer(objBuffer, offset, 2);
-//            
-//            // Mesh Vertex Data
-//            encoder->setVertexBuffer((MTL::Buffer*)mesh->vertexBuffer, 0, 0);
-//            
-//            encoder->drawIndexedPrimitives(MTL::PrimitiveTypeTriangle, mesh->indexCount, INDEX_FORMAT, (MTL::Buffer*)mesh->indexBuffer, 0, 1);
-//            ind++;
-//        }
-        renderNode(renderer.root, renderer, encoder);
+        renderNode(renderContext.root, renderContext, encoder);
         
         encoder->endEncoding();
-        depthState->release();
-        rpDesc->release();
     }
 }
 
-void ShadowPass::renderNode(SceneNode* node, Renderer2& renderer, MTL::RenderCommandEncoder* encoder){
+void ShadowPass::renderNode(SceneNode* node, RenderContext renderContext, MTL::RenderCommandEncoder* encoder){
     if(node->renderObject){
-        Mesh2* mesh = renderer.meshManager->getMesh(node->renderObject->meshID);
-        uploadMeshToGPU(*mesh, renderer.device);
+        Mesh2* mesh = renderContext.meshManager->getMesh(node->renderObject->meshID);
+        uploadMeshToGPU(*mesh, renderContext.renderer->device);
         
-        size_t offset = node->renderObject->objectIndex * renderer.objectStride;
+        size_t offset = node->renderObject->objectIndex * renderContext.renderer->objectStride;
         
-        encoder->setVertexBuffer(renderer.objectBuffer[renderer.frameIndex], offset, 2);
+        encoder->setVertexBuffer(renderContext.renderer->objectBuffer[renderContext.renderer->frameIndex], offset, 2);
         
         // Mesh Vertex Data
         encoder->setVertexBuffer((MTL::Buffer*)mesh->vertexBuffer, 0, 0);
@@ -93,12 +71,6 @@ void ShadowPass::renderNode(SceneNode* node, Renderer2& renderer, MTL::RenderCom
     }
     
     for(auto* child : node->children){
-        renderNode(child, renderer, encoder);
-    }
-}
-
-void ShadowPass::release(){
-    for(int i=0; i<cascades; i++){
-        encoders[i]->release();
+        renderNode(child, renderContext, encoder);
     }
 }

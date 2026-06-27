@@ -25,6 +25,10 @@ MeshID MeshManager::createMesh(void* vertices, size_t vertexSize, std::vector<In
     return id;
 }
 
+MeshID MeshManager::createMesh(vertex_index_pair &vi_pair){
+    return createMesh(vi_pair.vertexData.data(), vi_pair.vertexData.size(), vi_pair.indexData);
+}
+
 Mesh2* MeshManager::getMesh(MeshID id){
     auto it = meshes.find(id);
     if(it == meshes.end()) return nullptr;

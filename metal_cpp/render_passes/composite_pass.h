@@ -12,12 +12,14 @@ class CompositePass : public RenderPass{
 public:
     TextureID inputColor;
     TextureID volumeColor;
+    TextureID densityTexture;
     MTL::Texture* drawableTexture;
     PipelineID pipeline;
     
-    void execute(Renderer2& renderer) override;
-    void release() override;
+    void init() override;
+    void execute(RenderContext renderContext) override;
     
 private:
     MTL::RenderCommandEncoder* encoder = nullptr;
+    MTL::RenderPassDescriptor* rpDesc = nullptr;
 };

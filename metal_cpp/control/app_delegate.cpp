@@ -44,8 +44,10 @@ App::App(){
     engine = new Engine(renderer2);
     
     int fbWidth, fbHeight;
+    int width, height;
+    glfwGetWindowSize(window, &width, &height);
     glfwGetFramebufferSize(window, &fbWidth, &fbHeight);
-    engine->resize(fbWidth, fbHeight);
+    resize(width, height, fbWidth, fbHeight);
 }
 
 App::~App(){
@@ -59,12 +61,14 @@ App::~App(){
 void App::Run(){
     engine->init();
     while(!glfwWindowShouldClose(windowBridge.glfwWindow)){
+
         glfwPollEvents();
+        
         engine->update();
         engine->render();
     }
 }
 
 void App::resize(int width, int height, int fbWidth, int fbHeight){
-    engine->resize(fbWidth, fbHeight);
+    engine->resize(width, height, fbWidth, fbHeight);
 }

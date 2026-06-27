@@ -11,14 +11,13 @@ void RenderGraph::addPass(RenderPass *pass){
     passes.push_back(pass);
 }
 
-void RenderGraph::execute(Renderer2 &renderer){
+void RenderGraph::init(){
     for(auto* pass : passes){
-        pass->execute(renderer);
+        pass->init();
     }
 }
-
-void RenderGraph::release(){
+void RenderGraph::execute(RenderContext renderContext){
     for(auto* pass : passes){
-        pass->release();
+        pass->execute(renderContext);
     }
 }

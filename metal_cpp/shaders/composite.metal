@@ -35,10 +35,14 @@ vertex VSOut compositeVS(uint vid [[vertex_id]]){
 fragment float4 compositeFS(VSOut in [[stage_in]],
                             texture2d<float> sceneTex [[texture(0)]],
                             texture2d<float> volumeTex [[texture(1)]],
+                            texture2d<float> densityTex [[texture(2)]],
                             sampler samp [[sampler(0)]]){
     float2 uv = in.uv;
-    float2 uv_flipped = float2(uv.x, 1-uv.y);
-    float4 sceneCol = sceneTex.sample(samp, uv_flipped);
-    float4 volumeCol = volumeTex.sample(samp, uv_flipped);
-    return sceneCol * 0.5 + volumeCol * 0.5;
+    float2 sample_coord = float2(uv.x, 1-uv.y);
+    float4 sceneCol = sceneTex.sample(samp, sample_coord);
+    float4 volumeCol = volumeTex.sample(samp, sample_coord);
+    float densityCol = densityTex.sample(samp, sample_coord).r;
+    return float4(densityCol, densityCol, densityCol, 1.0);
+//    return sceneCol + volumeCol;
+//    return sceneCol * 0.5 + volumeCol * 0.5;
 }

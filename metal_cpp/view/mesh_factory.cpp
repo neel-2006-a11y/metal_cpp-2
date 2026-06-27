@@ -7,272 +7,30 @@
 
 #include "view/mesh_factory.h"
 
-Mesh MeshFactory::buildTriangle(MTL::Device* device) {
+vertex_index_pair MeshFactory::buildGizmoLine(simd::float3 p1, simd::float3 p2){
+    vertex_index_pair mesh;
     
-    Mesh mesh;
-    //Declare the data to send
-    Vertex vertices[3] = {
-        {{-0.75, -0.75}, {1.0, 0.0, 0.0}},
-        {{ 0.75, 0.0}, {0.0, 1.0, 0.0}},
-        {{  -0.75,  0.75}, {0.0, 0.0, 1.0}}
-    };
+    std::vector<LineVertex> vertices;
     
-    Index indices[3] = {0,1,2};
-    mesh.indexCount = 3;
+    LineVertex v1,v2;
+    v1.position = p1;
+    v2.position = p2;
     
-    //vertex buffer
-    mesh.vertexBuffer = device->newBuffer(3 * sizeof(Vertex), MTL::ResourceStorageModeShared);
-    memcpy(mesh.vertexBuffer->contents(), vertices, 3 * sizeof(Vertex));
+    vertices.push_back(v1);
+    vertices.push_back(v2);
     
-    //index buffer
-    mesh.indexBuffer = device->newBuffer(3 * sizeof(Index), MTL::ResourceStorageModeShared);
-    memcpy(mesh.indexBuffer->contents(), indices, 3 * sizeof(Index));
+    std::vector<Index> indices = {0,1};
     
-    // vertex descriptor
-    MTL::VertexDescriptor* vertexDescriptor = MTL::VertexDescriptor::alloc()->init();
-    auto attributes = vertexDescriptor->attributes();
-    //position: vec2
-    auto positionDescriptor = attributes->object(0);
-    positionDescriptor->setFormat(MTL::VertexFormat::VertexFormatFloat2);
-    positionDescriptor->setBufferIndex(0);
-    positionDescriptor->setOffset(0);
-    // color: vec3
-    auto colorDescriptor = attributes->object(1);
-        colorDescriptor->setFormat(MTL::VertexFormat::VertexFormatFloat3);
-        colorDescriptor->setBufferIndex(0);
-        colorDescriptor->setOffset(offsetof(Vertex, color));
+    mesh.vertexData.resize(sizeof(LineVertex) * vertices.size());
+    memcpy(mesh.vertexData.data(), vertices.data(), sizeof(LineVertex) * vertices.size());
     
-    auto layoutDescriptor = vertexDescriptor->layouts()->object(0);
-    layoutDescriptor->setStride(sizeof(Vertex));
-    
-    mesh.vertexDescriptor = vertexDescriptor;
-    
+    mesh.indexData = indices;
     
     return mesh;
 }
 
-Mesh MeshFactory::buildTriangle3D(MTL::Device* device) {
-    
-    Mesh mesh;
-    //Declare the data to send
-    simd::float3 positions[3] = {
-        {-0.75,-0.75,0.0},
-        {0.75,0.0,0.0},
-        {-0.75,0.75,0.0}
-    };
-    simd::float3 colors[3] = {
-        {1.0,0.0,0.0},
-        {0.0,1.0,0.0},
-        {0.0,0.0,1.0}
-    };
-    
-    Index indices[3] = {0,1,2};
-    mesh.indexCount = 3;
-    
-    Vertex3D vertices[3];
-    for(int i = 0; i < 3;i++){
-        vertices[i].position = positions[i];
-        vertices[i].color = colors[i];
-    };
-    //vertex buffer
-    mesh.vertexBuffer = device->newBuffer(3 * sizeof(Vertex3D), MTL::ResourceStorageModeShared);
-    memcpy(mesh.vertexBuffer->contents(), vertices, 3 * sizeof(Vertex3D));
-    
-    //index buffer
-    mesh.indexBuffer = device->newBuffer(3 * sizeof(Index), MTL::ResourceStorageModeShared);
-    memcpy(mesh.indexBuffer->contents(), indices, 3 * sizeof(Index));
-    
-    return mesh;
-}
 
-Mesh MeshFactory::buildQuad(MTL::Device* device) {
-    
-    Mesh mesh;
-    
-    //Declare the data to send
-    Vertex vertices[4] = {
-        {{-0.75, -0.75}, {1.0, 0.0, 0.0}},
-        {{ 0.75, -0.75}, {0.0, 1.0, 0.0}},
-        {{ 0.75,  0.75}, {0.0, 0.0, 1.0}},
-        {{-0.75,  0.75}, {0.0, 1.0, 0.0}},
-    };
-    
-    Index indices[6] = {0, 1, 2, 2, 3, 0};
-    mesh.indexCount = 6;
-    
-    //vertex buffer
-    mesh.vertexBuffer = device->newBuffer(4 * sizeof(Vertex), MTL::ResourceStorageModeShared);
-    memcpy(mesh.vertexBuffer->contents(), vertices, 4 * sizeof(Vertex));
-    
-    //index buffer
-    mesh.indexBuffer = device->newBuffer(6 * sizeof(Index), MTL::ResourceStorageModeShared);
-    memcpy(mesh.indexBuffer->contents(), indices, 6 * sizeof(Index));
-    
-    return mesh;
-}
-
-Mesh MeshFactory::buildCube(MTL::Device *device, simd::float3 scale){
-    Mesh mesh;
-
-    simd::float3 positions[] = {
-        // Front
-        {-0.5, -0.5,  0.5}, { 0.5, -0.5,  0.5}, { 0.5,  0.5,  0.5}, { -0.5,  0.5,  0.5},
-        // Back
-        {-0.5, -0.5, -0.5}, { 0.5, -0.5, -0.5}, { 0.5,  0.5, -0.5}, { -0.5,  0.5, -0.5}
-    };
-
-    simd::float3 normals[] = {
-        {0, 0, 1}, {0, 0, -1}, {1, 0, 0},
-        {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}
-    };
-
-    simd::float3 colors[] = {
-        {1,0,0}, {0,1,0}, {0,0,1},
-        {1,1,0}, {1,0,1}, {0,1,1}
-    };
-
-    struct Face {
-        int v[4];
-        simd::float3 n;
-        simd::float3 c;
-        simd::float2 uvScale;
-    };
-
-    Face faces[] = {
-        {{0,1,2,3}, normals[0], colors[0], {scale.x, scale.y}}, // front
-        {{5,4,7,6}, normals[1], colors[1], {scale.x, scale.y}}, // back
-        {{1,5,6,2}, normals[2], colors[2], {scale.z, scale.y}}, // right
-        {{4,0,3,7}, normals[3], colors[3], {scale.z, scale.y}}, // left
-        {{3,2,6,7}, normals[4], colors[4], {scale.x, scale.z}}, // top
-        {{4,5,1,0}, normals[5], colors[5], {scale.x, scale.z}}  // bottom
-    };
-
-    std::vector<Vertex3D> vertices;
-
-    for(auto& f : faces){
-        simd::float2 uvs[4] = {
-            {0.0f, 0.0f},
-            {f.uvScale.x, 0.0f},
-            {f.uvScale.x, f.uvScale.y},
-            {0.0f, f.uvScale.y}
-        };
-
-        for(int i=0;i<4;i++){
-            Vertex3D v;
-            v.position = positions[f.v[i]] * scale;
-            v.normal = f.n;
-            v.color = f.c;
-            v.uv = uvs[i];
-            vertices.push_back(v);
-        }
-    }
-
-    std::vector<Index> indices;
-
-    for(Index i=0;i<6;i++){
-        Index start = i * 4;
-
-        indices.insert(indices.end(),{
-            start, static_cast<unsigned short>(start+Index(1)), static_cast<unsigned short>(start+Index(2)),
-            start, static_cast<unsigned short>(start+Index(2)), static_cast<unsigned short>(start+Index(3))
-        });
-    }
-
-    mesh.indexCount = 36;
-
-    mesh.vertexBuffer = device->newBuffer(
-        vertices.size()*sizeof(Vertex3D),
-        MTL::ResourceStorageModeShared);
-
-    memcpy(mesh.vertexBuffer->contents(),
-           vertices.data(),
-           vertices.size()*sizeof(Vertex3D));
-
-    mesh.indexBuffer = device->newBuffer(
-        indices.size()*sizeof(Index),
-        MTL::ResourceStorageModeShared);
-
-    memcpy(mesh.indexBuffer->contents(),
-           indices.data(),
-           indices.size()*sizeof(Index));
-
-    return mesh;
-}
-
-Mesh MeshFactory::buildSphere(MTL::Device* device,
-                               uint16_t stacks,
-                               uint16_t slices,
-                               float radius)
-{
-    std::vector<Vertex3D> vertices;
-    std::vector<Index> indices;
-
-    for (uint16_t i = 0; i <= stacks; ++i)
-    {
-        float v = float(i) / stacks;
-        float phi = v * M_PI; // 0 → π
-
-        for (uint32_t j = 0; j <= slices; ++j)
-        {
-            float u = float(j) / slices;
-            float theta = u * 2.0f * M_PI; // 0 → 2π
-
-            float x = std::sin(phi) * std::cos(theta);
-            float y = std::cos(phi);
-            float z = std::sin(phi) * std::sin(theta);
-
-            Vertex3D vert;
-            vert.position = { x * radius, y * radius, z * radius };
-            vert.normal   = simd::normalize(simd::float3{x, y, z});
-            vert.uv       = { u, v };
-            vert.color    = simd::float3{1.0,1.0,1.0};
-
-            vertices.push_back(vert);
-        }
-    }
-
-    // Indices
-    for (uint16_t i = 0; i < stacks; ++i)
-    {
-        for (uint16_t j = 0; j < slices; ++j)
-        {
-            uint16_t row1 = i * (slices + 1);
-            uint16_t row2 = (i + 1) * (slices + 1);
-
-            indices.push_back(Index(row1 + j));
-            indices.push_back(Index(row2 + j));
-            indices.push_back(Index(row1 + j + 1));
-
-            indices.push_back(Index(row1 + j + 1));
-            indices.push_back(Index(row2 + j));
-            indices.push_back(Index(row2 + j + 1));
-        }
-    }
-
-    Mesh mesh{};
-
-    // Vertex buffer
-    mesh.vertexBuffer = device->newBuffer(
-        vertices.data(),
-        vertices.size() * sizeof(Vertex3D),
-        MTL::ResourceStorageModeManaged
-    );
-
-    // Index buffer
-    mesh.indexBuffer = device->newBuffer(
-        indices.data(),
-        indices.size() * sizeof(Index),
-        MTL::ResourceStorageModeManaged
-    );
-
-    mesh.indexCount = static_cast<uint>(indices.size());
-
-    return mesh;
-}
-
-
-
-vertex_index_pair MeshFactory::buildCube2(MTL::Device *device, simd::float3 scale){
+vertex_index_pair MeshFactory::buildCube2(simd::float3 scale){
     vertex_index_pair mesh;
 
     simd::float3 positions[] = {
@@ -351,7 +109,7 @@ vertex_index_pair MeshFactory::buildCube2(MTL::Device *device, simd::float3 scal
     return mesh;
 }
 
-vertex_index_pair MeshFactory::buildSphere2(MTL::Device* device,
+vertex_index_pair MeshFactory::buildSphere2(
                                uint16_t stacks,
                                uint16_t slices,
                                float radius)

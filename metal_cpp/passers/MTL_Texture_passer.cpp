@@ -9,6 +9,7 @@
 #include "resource_managers/texture_types.h"
 #include "converters/MTL_converters.h"
 
+
 void uploadTextureToGPU(Texture& tex, MTL::Device* device){
     if(tex.uploaded) return;
     
@@ -58,7 +59,6 @@ void uploadTextureToGPU(Texture& tex, MTL::Device* device){
     
     tex.gpuTexture = (MTL::Texture*)gpuTex;
     tex.uploaded = true;
-    
 }
 
 void uploadEmptyTextureToGPU(Texture& tex, MTL::Device* device){
@@ -78,4 +78,39 @@ void uploadEmptyTextureToGPU(Texture& tex, MTL::Device* device){
     
     tex.gpuTexture = gpuTex;
     tex.uploaded = true;
+}
+
+void updateTexture(Texture& tex, MTL::Device* device){
+    if(!tex.uploaded){
+        uploadTextureToGPU(tex, device);
+        return;
+    }
+    
+    TextureDesc& d = tex.desc;
+    if(d.storageMode != StorageMode::Shared){
+        std::cerr << " Texture with storageMode other than Shared can not be updated!" << std::endl;
+        return;
+    }
+    
+    size_t bpp = bytesPerPixel(d.format);
+    
+    size_t bytesPerRow = d.width * bpp;
+    size_t bytesPerImage = d.width * d.height * bpp;
+    
+    MTL::Region region = MTL::Region(0, 0, d.width, d.height);
+    
+    uint8_t* base_ptr = tex.raw_data.data();
+    MTL::Texture* gpuTex = (MTL::Texture*)tex.gpuTexture;
+    
+    if(d.layers>1){
+        // teture2DArray
+        for(int layer = 0; layer < d.layers; layer++){
+            uint8_t* layer_ptr = base_ptr + layer * bytesPerImage;
+            
+            gpuTex->replaceRegion(region, 0, layer, layer_ptr, bytesPerRow, 0);
+        }
+    }else{
+        // regular texture2D
+        gpuTex->replaceRegion(region, 0, base_ptr, bytesPerRow);
+    }
 }

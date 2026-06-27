@@ -19,7 +19,12 @@ enum class TextureFormat {
     RG8Unorm,
     RGBA8Unorm,
     RGBA16Float,
+    R32Float,
 
+    R8Uint,
+    R16Uint,
+    R32Uint,
+    
     Depth32Float
 };
 
@@ -33,7 +38,11 @@ inline size_t bytesPerPixel(TextureFormat format)
         case TextureFormat::RG8Unorm:       return 2;
         case TextureFormat::RGBA8Unorm:     return 4;
         case TextureFormat::RGBA16Float:    return 8;
+        case TextureFormat::R32Float:       return 4;
         case TextureFormat::Depth32Float:   return 4;
+        case TextureFormat::R8Uint:         return 1;
+        case TextureFormat::R16Uint:        return 2;
+        case TextureFormat::R32Uint:        return 4;
         default: return 0;
     }
 }
@@ -46,7 +55,8 @@ enum class TextureUsage : uint32_t {
     None          = 0,
     Sampled       = 1 << 0,
     RenderTarget  = 1 << 1,
-    DepthStencil  = 1 << 2
+    DepthStencil  = 1 << 2,
+    ShaderWrite   = 1 << 3
 };
 
 // Bitmask helpers

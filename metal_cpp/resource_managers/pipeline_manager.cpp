@@ -48,17 +48,77 @@ PipelineID PipelineManager::createPipeline(PipelineDesc& desc){
     rpDesc->release();
     
     PipelineID id = nextID++;
-    pipelines[id] = pipeline;
+    renderPipelines[id] = pipeline;
     return id;
 }
 
 
+ComputePipelineID PipelineManager::createComputePipeline(ComputePipelineDesc &desc){
+    NS::Error* error;
+    
+    MTL::Function* kernel = library->newFunction(NS::String::string(desc.kernelFunc.c_str(), NS::UTF8StringEncoding));
+    
+    if(!kernel){
+        std::cerr << "kernel not found!" << std::endl;
+        return INVALID_COMPUTE_PIPE;
+    }
+    
+    MTL::ComputePipelineDescriptor* cpDesc = MTL::ComputePipelineDescriptor::alloc()->init();
+    cpDesc->setComputeFunction(kernel);
+    
+    MTL::ComputePipelineState* pipeline = device->newComputePipelineState(kernel, &error);
+    
+//    __block MTL::ComputePipelineState* pipeline = nullptr;
+//    device->newComputePipelineState(
+//                                    cpDesc,
+//                                    MTL::PipelineOptionBufferTypeInfo,
+//                                    ^(MTL::ComputePipelineState* pPipeline, MTL::ComputePipelineReflection* pReflection, NS::Error* pError){
+//                                        if(pError){
+//                                            std::cout << "Pipeline compilation failed: " << pError->localizedDescription()->utf8String() << std::endl;
+//                                            return;
+//                                        }
+//                                        
+//                                        if(pReflection){
+//                                            NS::Array* arguments = pReflection->arguments();
+//                                            std::cout << "Kernel arguments count: " << arguments->count() << std::endl;
+//                                        }
+//                                        
+//                                        if(pPipeline){
+//                                            pipeline = pPipeline->retain();
+//                                            std::cout << "Compute pipeline state successfully created!" << std::endl;
+//                                        }
+//                                    }
+//                                    );
+    // Release descriptor and kernel regardless of success
+    cpDesc->release();
+    kernel->release();
+
+    if (!pipeline) {
+        // Failed to create compute pipeline
+        std::cout << error->localizedDescription()->utf8String() << std::endl;
+        return INVALID_COMPUTE_PIPE;
+    }
+
+    ComputePipelineID id = nextComputeID++;
+    computePipelines[id] = pipeline;
+    return id;
+}
+
 MTL::RenderPipelineState* PipelineManager::get(PipelineID id){
-    auto it = pipelines.find(id);
-    if(it == pipelines.end()){
+    auto it = renderPipelines.find(id);
+    if(it == renderPipelines.end()){
         std::cerr << "pipeline with id: " << id << "doesn't exist\n";
         return nullptr;
     }
     
+    return it->second;
+}
+
+MTL::ComputePipelineState* PipelineManager::getCompute(ComputePipelineID id){
+    auto it = computePipelines.find(id);
+    if(it == computePipelines.end()){
+        std::cerr << "compute pipeline with id: " << id << "doesn't exist\n";
+        return nullptr;
+    }
     return it->second;
 }

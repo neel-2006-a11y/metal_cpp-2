@@ -7,12 +7,16 @@
 
 #include "render_passes/imgui_pass.h"
 
-void ImGuiPass::execute(Renderer2 &renderer){
-    MTL::RenderPassDescriptor* rpDesc = MTL::RenderPassDescriptor::alloc()->init();
+void ImGuiPass::init(){
+    rpDesc = MTL::RenderPassDescriptor::alloc()->init();
     
-    rpDesc->colorAttachments()->object(0)->setTexture(drawableTexture);
     rpDesc->colorAttachments()->object(0)->setLoadAction(MTL::LoadActionLoad);
     rpDesc->colorAttachments()->object(0)->setStoreAction(MTL::StoreActionStore);
+}
+
+void ImGuiPass::execute(RenderContext renderContext){
+    
+    rpDesc->colorAttachments()->object(0)->setTexture(drawableTexture);
     
     // ------------
     // Start frame
@@ -24,7 +28,7 @@ void ImGuiPass::execute(Renderer2 &renderer){
     // ------------
     // UI
     // ------------
-    auto& dbg = renderer.debug;
+    auto& dbg = renderContext.renderer->debug;
     ImGui::Begin("Debug");
     
     ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
@@ -46,19 +50,16 @@ void ImGuiPass::execute(Renderer2 &renderer){
     }
     drawInspector(selected);
     
-    encoder = renderer.cmd->renderCommandEncoder(rpDesc);
+    // ------------
+    // Gizmo
+    // ------------
+//    translateGizmo.draw_and_update(&gizmoState, selected, *renderer.camera, renderer.curr_window_width, renderer.curr_window_height);
+    
+    encoder = renderContext.renderer->cmd->renderCommandEncoder(rpDesc);
     
     ImGui::Render();
-    ImGui_ImplMetal_RenderDrawData(ImGui::GetDrawData(), renderer.cmd, encoder);
+    ImGui_ImplMetal_RenderDrawData(ImGui::GetDrawData(), renderContext.renderer->cmd, encoder);
     encoder->endEncoding();
-    rpDesc->release();
-}
-
-void ImGuiPass::release(){
-    if(encoder){
-        encoder->release();
-        encoder = nullptr;
-    }
 }
 
 void ImGuiPass::drawSceneHierarchy(SceneNode *root, SceneNode *&selected){

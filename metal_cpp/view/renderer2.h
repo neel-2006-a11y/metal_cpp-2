@@ -14,6 +14,7 @@
 #include "resource_managers/pipeline_manager.h"
 #include "scene/RenderObject.h"
 #include "scene/SceneNode.h"
+#include "view/camera.h"
 
 class Renderer2{
 public:
@@ -25,12 +26,9 @@ public:
     
     MTL::CommandQueue* commandQueue = nullptr;
     
-    TextureManager* textureManager;
-    MeshManager* meshManager;
-    MaterialManager* materialManager;
-    PipelineManager* pipelineManger;
-    
     MTL::SamplerState* defaultSampler = nullptr;
+    
+    MTL::DepthStencilState* depthState = nullptr;
     
     MTL::CommandBuffer* cmd = nullptr;
     
@@ -49,17 +47,12 @@ public:
     size_t maxMaterials = 0;
     int frameIndex = 0;
     
-    Scene* scene = nullptr;
-    SceneNode* root = nullptr;
-    
-    int curr_width, curr_height;
     DebugSettings debug;
     
     void initFrameBuffer();
     void uploadFrameUniforms(FrameUniforms& frame);
     
     void initObjectBuffer(size_t maxObjCount);
-    void uploadAllObjectUniforms(const std::vector<Entity>& objects);
     void uploadObjectUniforms(const std::vector<ObjectUniforms>& objs);
     
     void initMaterialBuffer(size_t maxMatCount);

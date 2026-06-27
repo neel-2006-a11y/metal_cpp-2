@@ -20,6 +20,11 @@
 #include "view/KeyBoardHandler.h"
 #include "resource_managers/ModelLoader.h"
 #include "scene/SceneNode.h"
+#include "view/gizmoState.h"
+#include "view/gizmoFactory.h"
+#include "view/renderContext.h"
+#include "fluid_stam/fluid_solver.h"
+#include "passers/MTL_Texture_passer.h"
 
 class Engine
 {
@@ -28,7 +33,7 @@ public:
     void init();
     void update();
     void render();
-    void resize(int width, int height);
+    void resize(int width, int height, int fbWidth, int fbHeight);
     
 private:
     void handleKeyboard();
@@ -36,11 +41,12 @@ private:
     // time
     double lastTime = 0, currTime = 0;
     // screen dimensions
-    int curr_width = 0, curr_height = 0;
-    int shadow_res = 512;
-    int volumeDownFact = 4;
+    int curr_window_width = 0, curr_window_height = 0;
+    int curr_fb_width = 0, curr_fb_height = 0;
+    int shadow_res = 2048;
+    int volumeDownFact = 1;
     
-    Renderer2* renderer;
+    Renderer2* renderer = nullptr;
     
     RenderGraph renderGraph;
     
@@ -50,9 +56,11 @@ private:
     DirectionalLight sun;
     
     // scene
-    Scene scene;
     SceneNode root;
     SceneNode* selected = nullptr;
+    
+    // gizmos
+    std::vector<Gizmo> gizmos;
     
     // managers
     TextureManager textureManager;
@@ -64,25 +72,30 @@ private:
     std::string assetDirectory;
     
     // pipelines
-    PipelineID shadowPipelineID;
-    PipelineID halftone_pipeID;
-    PipelineID volumetricPipelineID;
-    PipelineID compositePipelineID;
+    PipelineID shadowPipelineID = INVALID_SHADER;
+    PipelineID halftone_pipeID = INVALID_SHADER;
+    PipelineID volumetricPipelineID = INVALID_SHADER;
+    PipelineID compositePipelineID = INVALID_SHADER;
+    PipelineID IDPipelineID = INVALID_SHADER;
+    PipelineID LinePipelineID = INVALID_SHADER;
     
     // ShadowMap
-    TextureID shadowMapID;
+    TextureID shadowMapID = INVALID_TEXTURE;
     MTL::SamplerState* shadowMap_sampler;
     
     // Textures
-    TextureID depthTextureID;
-    TextureID sceneColorTextureID;
-    TextureID volumetricTextureID;
-    TextureID blueNoiseTextureID;
+    TextureID depthTextureID = INVALID_TEXTURE;
+    TextureID sceneColorTextureID = INVALID_TEXTURE;
+    TextureID volumetricTextureID = INVALID_TEXTURE;
+    TextureID blueNoiseTextureID = INVALID_TEXTURE;
+    TextureID IDTextureID = INVALID_TEXTURE;
     
     // materials
-    MaterialID halftoneMaterialID;
-    TextureID halftone_textureID;
+    MaterialID halftoneMaterialID = INVALID_MATERIAL;
+    TextureID halftone_textureID = INVALID_TEXTURE;
     MTL::SamplerState* halftone_sampler;
+    
+    MaterialID lineMaterialID = INVALID_MATERIAL;
     
     // passes
     ShadowPass shadowPass;
@@ -90,6 +103,9 @@ private:
     VolumetricPass volumetricPass;
     CompositePass compositePass;
     ImGuiPass imGuiPass;
+    
+    // Fluid
+    Fluid fluid;
     
     
     FrameUniforms frameU;

@@ -13,8 +13,8 @@
 class RenderGraph{
 public:
     void addPass(RenderPass* pass);
-    void execute(Renderer2& renderer);
-    void release();
+    void init();
+    void execute(RenderContext renderContext);
     
 private:
     std::vector<RenderPass*> passes;

@@ -27,9 +27,12 @@ void buildObjectBuffer(SceneNode* node, std::vector<ObjectUniforms>& buffer, uin
     if(!node->visible) return;
     
     if(node->dirty){
+        node->worldRotation = simd_matrix4x4(node->localT.rotation);
         node->worldMatrix = node->localT.computeModel();
-        if(node->parent)
+        if(node->parent){
+            node->worldRotation = node->parent->worldRotation * node->worldRotation;
             node->worldMatrix = node->parent->worldMatrix * node->worldMatrix;
+        }
 //            node->dirty = false (nothing is making it dirty right now)
     }
     

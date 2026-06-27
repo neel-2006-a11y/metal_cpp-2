@@ -11,6 +11,7 @@
 #include "ImGui/imgui_impl_glfw.h"
 #include "imgui_impl_metal.h"
 #include "scene/SceneNode.h"
+#include "view/gizmo_translate.h"
 
 class ImGuiPass : public RenderPass{
 public:
@@ -19,12 +20,16 @@ public:
     SceneNode* root;
     SceneNode* selected;
     
-    void execute(Renderer2& renderer) override;
+    void init() override;
+    void execute(RenderContext renderContext) override;
     void drawSceneHierarchy(SceneNode* root, SceneNode*& selected);
-    void release() override;
     
 private:
     MTL::RenderCommandEncoder* encoder = nullptr;
+    MTL::RenderPassDescriptor* rpDesc = nullptr;
+    
+//    GizmoInteractState gizmoState;
+//    GizmoTranslate translateGizmo;
     
     void drawSceneNode(SceneNode* node, SceneNode*& selected);
     void drawInspector(SceneNode* node);

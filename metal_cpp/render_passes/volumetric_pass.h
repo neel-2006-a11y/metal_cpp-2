@@ -19,8 +19,9 @@ public:
     
     PipelineID volumetricPipeID;
     
-    void execute(Renderer2& r) override;
-    void release() override;
+    void init() override;
+    void execute(RenderContext renderContext) override;
 private:
-    MTL::RenderCommandEncoder* encoder;
+    MTL::RenderCommandEncoder* encoder = nullptr;
+    MTL::RenderPassDescriptor* rpDesc = nullptr;
 };

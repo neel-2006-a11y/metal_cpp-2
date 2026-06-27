@@ -17,7 +17,11 @@ inline MTL::PixelFormat toMTLPixelFormat(TextureFormat format)
         case TextureFormat::RG8Unorm:       return MTL::PixelFormatRG8Unorm;
         case TextureFormat::RGBA8Unorm:     return MTL::PixelFormatBGRA8Unorm_sRGB;
         case TextureFormat::RGBA16Float:    return MTL::PixelFormatRGBA16Float;
+        case TextureFormat::R32Float:       return MTL::PixelFormatR32Float;
         case TextureFormat::Depth32Float:   return MTL::PixelFormatDepth32Float;
+        case TextureFormat::R8Uint:         return MTL::PixelFormatR8Uint;
+        case TextureFormat::R16Uint:        return MTL::PixelFormatR16Uint;
+        case TextureFormat::R32Uint:        return MTL::PixelFormatR32Uint;
         default:                            return MTL::PixelFormatInvalid;
     }
 }
@@ -34,7 +38,10 @@ inline MTL::TextureUsage toMTLUsage(TextureUsage usage)
 
     if (hasFlag(usage, TextureUsage::DepthStencil))
         result |= MTL::TextureUsageRenderTarget;
-
+    
+    if(hasFlag(usage, TextureUsage::ShaderWrite))
+        result |= MTL::TextureUsageShaderWrite;
+    
     return result;
 }
 

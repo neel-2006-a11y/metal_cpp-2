@@ -16,6 +16,7 @@ public:
     TextureID createTexture(TextureDesc& desc, void* data, bool no_cpu);
     TextureID createEmpty(TextureDesc& desc);
     TextureID createEmptyNoCPU(TextureDesc& desc);
+    TextureID createZeroTexture(TextureDesc& desc);
     
     TextureID loadPPM(std::string& filename, TextureDesc& desc);
     TextureID loadPPMArray(std::vector<std::string>& filenames, TextureDesc& desc);

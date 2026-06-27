@@ -11,3 +11,4 @@
 
 void uploadTextureToGPU(Texture& tex, MTL::Device* device);
 void uploadEmptyTextureToGPU(Texture& tex, MTL::Device* device);
+void updateTexture(Texture& tex, MTL::Device* device);

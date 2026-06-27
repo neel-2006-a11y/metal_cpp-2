@@ -21,6 +21,7 @@ struct SceneNode {
     // ---------------
     Transform localT;
     
+    simd::float4x4 worldRotation = matrix_identity_float4x4;
     simd::float4x4 worldMatrix = matrix_identity_float4x4;
     bool dirty = true;
     

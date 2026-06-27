@@ -96,6 +96,7 @@ float4 fragment fragmentMain3D_dither_2(
     float3 out;
     
     out = dithered * diffuse_color;
+//    out = diffuse_color * luminance;
 //    out = diffuse_color.b;
 //    out = sampleUV.x;
 //    out = scale == MinAdapt * sqrt(luminance) ? 1.0 : 0.0;

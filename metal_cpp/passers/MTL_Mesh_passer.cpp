@@ -12,10 +12,10 @@ void uploadMeshToGPU(Mesh2& mesh, MTL::Device* device){
     if(mesh.uploaded) return;
     
     // vertex buffer
-    mesh.vertexBuffer = device->newBuffer(mesh.vertexData.data(), mesh.vertexData.size(), MTL::ResourceStorageModeManaged);
+    mesh.vertexBuffer = device->newBuffer(mesh.vertexData.data(), mesh.vertexData.size(), MTL::ResourceStorageModeShared);
     
     // index buffer
-    mesh.indexBuffer = device->newBuffer(mesh.indexData.data(), mesh.indexData.size() * sizeof(Index), MTL::ResourceStorageModeManaged);
+    mesh.indexBuffer = device->newBuffer(mesh.indexData.data(), mesh.indexData.size() * sizeof(Index), MTL::ResourceStorageModeShared);
     
     mesh.uploaded = true;
 }

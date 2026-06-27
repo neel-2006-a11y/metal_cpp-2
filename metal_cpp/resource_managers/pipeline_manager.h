@@ -7,7 +7,6 @@
 
 #pragma once
 
-
 #include <unordered_map>
 #include <string>
 #include "resource_managers/mesh_types.h"
@@ -26,19 +25,29 @@ struct PipelineDesc
     TextureFormat depthFormat;
 };
 
+struct ComputePipelineDesc
+{
+    std::string kernelFunc;
+};
+
 class PipelineManager
 {
 public:
     PipelineManager(MTL::Device* device, MTL::Library* library);
     
     PipelineID createPipeline(PipelineDesc& desc);
+    ComputePipelineID createComputePipeline(ComputePipelineDesc& desc);
     
     MTL::RenderPipelineState* get(PipelineID id);
+    MTL::ComputePipelineState* getCompute(ComputePipelineID id);
     
 private:
     MTL::Device* device;
     MTL::Library* library;
     
-    std::unordered_map<PipelineID, MTL::RenderPipelineState*> pipelines;
+    std::unordered_map<PipelineID, MTL::RenderPipelineState*> renderPipelines;
     PipelineID nextID = 1;
+    
+    std::unordered_map<ComputePipelineID, MTL::ComputePipelineState*> computePipelines;
+    ComputePipelineID nextComputeID = 1;
 };

@@ -7,15 +7,16 @@
 
 #include "passers/MTL_material_passer.h"
 #include "passers/MTL_Texture_passer.h"
+#include "view/renderContext.h"
 
-void bindMaterial(MaterialID mat_id, Material& mat, MTL::RenderCommandEncoder* encoder, TextureManager& texMgr,  Renderer2& renderer){
+void bindMaterial(MaterialID mat_id, Material& mat, MTL::RenderCommandEncoder* encoder, RenderContext renderContext){
     
     // textures
     for(auto& t : mat.textures){
-        Texture* tex = texMgr.get(t.texture);
+        Texture* tex = renderContext.textureManager->get(t.texture);
         if(!tex) continue;
         
-        uploadTextureToGPU(*tex, renderer.device);
+        uploadTextureToGPU(*tex, renderContext.renderer->device);
         
         encoder->setFragmentTexture((MTL::Texture*)tex->gpuTexture, t.slot);
     }
@@ -26,6 +27,6 @@ void bindMaterial(MaterialID mat_id, Material& mat, MTL::RenderCommandEncoder* e
     }
     
     // uniforms
-    size_t offset = (mat_id - 1) * renderer.materialStride;
-    encoder->setFragmentBuffer(renderer.materialBuffer, offset, 3);
+    size_t offset = (mat_id - 1) * renderContext.renderer->materialStride;
+    encoder->setFragmentBuffer(renderContext.renderer->materialBuffer, offset, 3);
 }

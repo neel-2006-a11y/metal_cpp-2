@@ -25,8 +25,6 @@
 
 int main(int argc, const char * argv[]) {
     
-//    NS::AutoreleasePool* autoreleasePool = NS::AutoreleasePool::alloc()->init();
-    
     App app;
     app.Run();
     
@@ -44,7 +42,6 @@ int main(int argc, const char * argv[]) {
             savePPM(textures[i], "halftone_textures/texture"+std::to_string(i)+".ppm");
         }
     }
-//    autoreleasePool->release();
     
     return 0;
 }

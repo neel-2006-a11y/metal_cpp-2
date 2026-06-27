@@ -26,6 +26,11 @@ vertex VSOut fullScreenVS(uint vid [[vertex_id]]){
         float2(2.0, 0.0),
         float2(0.0, 2.0)
     };
+//    float2 uv[3] = {
+//        float2(-1.0, 1.0),
+//        float2(3.0, 1.0),
+//        float2(-1.0, -3.0)
+//    };
 
     VSOut out;
     out.position = float4(pos[vid], 0.0, 1.0);
@@ -41,9 +46,9 @@ fragment float4 volumetricFS(VSOut in [[stage_in]],
                              constant FrameUniforms_2& frame [[buffer(1)]]){
     
     float2 uv = in.uv;
-    float2 uv_flipped = float2(uv.x, 1-uv.y);
-    float depth = depthTexture.sample(samp, uv_flipped).r;
-    float noise = blueNoise.sample(samp, uv).r;
+    float2 sample_coord = float2(uv.x, 1-uv.y);
+    float depth = depthTexture.sample(samp, sample_coord).r;
+    float noise = blueNoise.sample(samp, sample_coord).r;
     
     // reconstruct world pos
     float4 clip = float4(uv * 2.0 - 1.0, depth, 1.0);

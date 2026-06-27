@@ -13,11 +13,13 @@
 class MouseHandler{
 public:
     MouseHandler(GLFWwindow* glfwWindow);
+    void update();
     void updateCamera(Camera* camera);
+    
+    double currX,currY;
+    double lastX,lastY;
     
 private:
     GLFWwindow* glfwWindow;
-    
-    double lastX,lastY;
     bool firstMouse = true;
 };

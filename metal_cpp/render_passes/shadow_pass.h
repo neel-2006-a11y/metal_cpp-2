@@ -19,10 +19,11 @@ public:
     
     int cascades = CASCADES;
     
-    void execute(Renderer2& renderer) override;
-    void renderNode(SceneNode* node, Renderer2& renderer, MTL::RenderCommandEncoder* encoder) override;
-    void release() override;
+    void init() override;
+    void execute(RenderContext renderContext) override;
+    void renderNode(SceneNode* node, RenderContext renderContext, MTL::RenderCommandEncoder* encoder);
     
 private:
     MTL::RenderCommandEncoder* encoders[CASCADES] = {nullptr};
+    MTL::RenderPassDescriptor* rpDescs[CASCADES] = {nullptr};
 };

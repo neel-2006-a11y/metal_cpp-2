@@ -41,6 +41,14 @@ TextureID TextureManager::createEmptyNoCPU(TextureDesc& desc)
     return createTexture(desc, nullptr, true);
 }
 
+TextureID TextureManager::createZeroTexture(TextureDesc &desc){
+    size_t bpp = bytesPerPixel(desc.format);
+    size_t totalSize = desc.width * desc.height * desc.layers * bpp;
+    
+    std::vector<uint8_t> zeros(totalSize);
+    
+    return createTexture(desc, zeros.data());
+}
 
 Texture* TextureManager::get(TextureID id)
 {

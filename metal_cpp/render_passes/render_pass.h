@@ -8,12 +8,13 @@
 #pragma once
 
 #include "view/renderer2.h"
+#include "view/renderContext.h"
 
 class RenderPass
 {
 public:
     virtual ~RenderPass() = default;
-    virtual void execute(Renderer2& renderer) = 0;
+    virtual void init() = 0;
+    virtual void execute(RenderContext renderContext) = 0;
     virtual void renderNode(SceneNode* node, Renderer2& renderer, MTL::RenderCommandEncoder* encoder) {};
-    virtual void release() = 0;
 };

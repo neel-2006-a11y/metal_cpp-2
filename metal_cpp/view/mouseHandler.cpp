@@ -6,28 +6,33 @@
 //
 
 #include "view/mouseHandler.h"
+#include <iostream>
 
 MouseHandler::MouseHandler(GLFWwindow* glfwWindow): glfwWindow(glfwWindow){}
 
+
+void MouseHandler::update(){
+    lastX = currX; lastY = currY;
+    
+    glfwGetCursorPos(glfwWindow, &currX, &currY);
+    
+    if(firstMouse){ // first jump
+        lastX = currX;
+        lastY = currY;
+        firstMouse = false;
+        return;
+    }
+}
 void MouseHandler::updateCamera(Camera *camera){
-    double x,y;
-    glfwGetCursorPos(glfwWindow, &x, &y);
     int width, height;
     glfwGetWindowSize(glfwWindow, &width, &height);
 
     camera->setAspect(float(width)/height);
     
-    if(firstMouse){
-        lastX = x;
-        lastY = y;
-        firstMouse = false;
-        return;
-    }
+    float dx = float(currX - lastX);
+    float dy = float(currY - lastY);
     
-    float dx = float(x - lastX);
-    float dy = float(y - lastY);
-    lastX = x;
-    lastY = y;
+    
     if(camera->relativeMouse){
         camera->processMouse(dx, dy);
     }

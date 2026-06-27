@@ -11,5 +11,6 @@
 #include "resource_managers/texture_manager.h"
 #include "resource_managers/pipeline_manager.h"
 #include "view/renderer2.h"
+#include "view/renderContext.h"
 
-void bindMaterial(MaterialID mat_id, Material& mat, MTL::RenderCommandEncoder* encoder, TextureManager& texMgr, Renderer2& renderer);
+void bindMaterial(MaterialID mat_id, Material& mat, MTL::RenderCommandEncoder* encoder, RenderContext renderContext);

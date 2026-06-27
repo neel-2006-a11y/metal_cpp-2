@@ -17,14 +17,11 @@ struct vertex_index_pair{
 };
 
 namespace MeshFactory {
-    Mesh buildTriangle(MTL::Device* device);
-    Mesh buildTriangle3D(MTL::Device* device);
-    Mesh buildQuad(MTL::Device* device);
-    Mesh buildCube(MTL::Device* device, simd::float3 scale);
-    Mesh buildSphere(MTL::Device* device, uint16_t stacks, uint16_t slices, float radius);
 
-    vertex_index_pair buildCube2(MTL::Device* device, simd::float3 scale);
-    vertex_index_pair buildSphere2(MTL::Device* device, uint16_t stacks, uint16_t slices, float radius);
+    vertex_index_pair buildGizmoLine(simd::float3 p1, simd::float3 p2);
+    
+    vertex_index_pair buildCube2(simd::float3 scale);
+    vertex_index_pair buildSphere2(uint16_t stacks, uint16_t slices, float radius);
 }
 
 struct Object{

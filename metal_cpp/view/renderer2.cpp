@@ -23,6 +23,13 @@ Renderer2::Renderer2(MTL::Device* device, CA::MetalLayer* layer, GLFWwindow* glf
     default_desc->setMaxAnisotropy(1);
     default_desc->setMipFilter(MTL::SamplerMipFilterNotMipmapped);
     defaultSampler = device->newSamplerState(default_desc);
+    
+    // depth state
+    MTL::DepthStencilDescriptor* depthDesc = MTL::DepthStencilDescriptor::alloc()->init();
+    depthDesc->setDepthCompareFunction(MTL::CompareFunctionLess);
+    depthDesc->setDepthWriteEnabled(true);
+    depthState = device->newDepthStencilState(depthDesc);
+    depthDesc->release();
 }
 
 void Renderer2::initFrameBuffer(){
@@ -46,25 +53,6 @@ void Renderer2::initObjectBuffer(size_t maxObjCount){
     size_t totalSize = objectStride * maxObjCount;
     for(int i=0; i<FIF; i++){
         objectBuffer[i] = device->newBuffer(totalSize, MTL::ResourceStorageModeShared);
-    }
-}
-
-void Renderer2::uploadAllObjectUniforms(const std::vector<Entity> &objects){
-    
-    assert(objects.size() <= maxObjects);
-    
-    MTL::Buffer* buffer = objectBuffer[frameIndex];
-    uint8_t* base = (uint8_t*) buffer->contents();
-    
-    for(size_t i = 0; i<objects.size(); i++){
-        // build object uniforms
-        ObjectUniforms uniforms;
-        
-        uniforms.model = objects[i].transform.computeModel();
-        uniforms.invModel = simd::inverse(uniforms.model);
-        uniforms.tileScale = objects[i].renderObject.tileScale;
-        
-        memcpy(base + i * objectStride, &uniforms, sizeof(ObjectUniforms));
     }
 }
 
