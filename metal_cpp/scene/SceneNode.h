@@ -7,8 +7,9 @@
 
 #pragma once
 
-#include "scene/RenderObject.h"
+#include "scene/RenderComponent.h"
 #include "resource_managers/material_manager.h"
+#include "view/renderContext.h"
 
 struct SceneNode {
     // ---------------
@@ -23,7 +24,6 @@ struct SceneNode {
     
     simd::float4x4 worldRotation = matrix_identity_float4x4;
     simd::float4x4 worldMatrix = matrix_identity_float4x4;
-    bool dirty = true;
     
     // ---------------
     // Hierarchy
@@ -34,7 +34,7 @@ struct SceneNode {
     // ---------------
     // Rendering // (should be component system here)
     // ---------------
-    RenderObject* renderObject = nullptr;
+    RenderComponent* renderComponent = nullptr;
     
     // ---------------
     // Flags
@@ -46,6 +46,17 @@ void assignParent(SceneNode* child, SceneNode* parent);
 
 SceneNode* createNode(SceneNode* parent);
 
-void buildObjectBuffer(SceneNode* node, std::vector<ObjectUniforms>& buffer, uint32_t& index);
+
+void updateNode(SceneNode* node);
+
+struct Renderable{
+    RenderComponent* renderComponent;
+    
+    ObjectUniforms objectUniforms;
+};
 
 void assignPipelineID(SceneNode* node, PipelineID pipeID, MaterialManager& matMgr);
+
+SceneNode* buildSampleSceneNode(RenderDevice renderDevice);
+
+void extractRenderables(SceneNode* node, std::vector<Renderable>& renderables);

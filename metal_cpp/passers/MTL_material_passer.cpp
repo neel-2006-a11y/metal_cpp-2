@@ -9,24 +9,24 @@
 #include "passers/MTL_Texture_passer.h"
 #include "view/renderContext.h"
 
-void bindMaterial(MaterialID mat_id, Material& mat, MTL::RenderCommandEncoder* encoder, RenderContext renderContext){
+void bindMaterial(size_t material_ind, Material& mat, MTL::RenderCommandEncoder* encoder, RenderContext renderContext){
     
     // textures
     for(auto& t : mat.textures){
         Texture* tex = renderContext.textureManager->get(t.texture);
         if(!tex) continue;
         
-        uploadTextureToGPU(*tex, renderContext.renderer->device);
+        uploadTextureToGPU(*tex, renderContext.device);
         
-        encoder->setFragmentTexture((MTL::Texture*)tex->gpuTexture, t.slot);
+        encoder->setFragmentTexture(tex->gpuTexture, t.slot);
     }
     
     // samplers
     for(auto& s : mat.samplers){
-        encoder->setFragmentSamplerState((MTL::SamplerState*)s.sampler, s.slot);
+        encoder->setFragmentSamplerState(renderContext.samplerManager->getState(s.sampler)->state, s.slot);
     }
     
     // uniforms
-    size_t offset = (mat_id - 1) * renderContext.renderer->materialStride;
-    encoder->setFragmentBuffer(renderContext.renderer->materialBuffer, offset, 3);
+    size_t offset = (material_ind) * renderContext.materialBufferData.materialStride;
+    encoder->setFragmentBuffer(renderContext.materialBufferData.materialBuffer, offset, 3);
 }

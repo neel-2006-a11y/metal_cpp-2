@@ -10,16 +10,23 @@
 
 class CompositePass : public RenderPass{
 public:
-    TextureID inputColor;
+    // input
+    TextureID inputColor; // output
     TextureID volumeColor;
     TextureID densityTexture;
-    MTL::Texture* drawableTexture;
+    
+    // pipeline
     PipelineID pipeline;
     
-    void init() override;
-    void execute(RenderContext renderContext) override;
+    void init(RenderDevice renderDevice) override;
+    void execute(RenderContext renderContext, RenderGraph* renderGraph) override;
+    void resize(RenderContext renderContext) override;
     
 private:
+    SamplerID sampler;
     MTL::RenderCommandEncoder* encoder = nullptr;
     MTL::RenderPassDescriptor* rpDesc = nullptr;
+    
+    void get_resources(RenderGraph* renderGraph);
+    void publish(RenderGraph* renderGraph);
 };

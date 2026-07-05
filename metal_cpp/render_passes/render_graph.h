@@ -7,15 +7,21 @@
 
 #pragma once
 
-#include "view/renderer2.h"
-#include "render_passes/render_pass.h"
+#include "view/renderContext.h"
+#include "view/ResourceRegistry.h"
+#include "view/FrameDataRegistry.h"
 
+class RenderPass;
 class RenderGraph{
 public:
+    RenderGraph(ResourceRegistry* resourceRegistry, FrameDataRegistry* frameDataRegistry);
     void addPass(RenderPass* pass);
-    void init();
-    void execute(RenderContext renderContext);
+    void init(RenderDevice renderDevice);
+    void execute(RenderContext renderContext, bool resize);
+    void resize(RenderContext renderContext);
     
+    ResourceRegistry* resourceRegistry;
+    FrameDataRegistry* frameDataRegistry;    
 private:
     std::vector<RenderPass*> passes;
 };

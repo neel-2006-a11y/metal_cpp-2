@@ -24,6 +24,8 @@ public:
 private:
     MTL::Device* device;
     NativeWindowBridge windowBridge;
+    
     Renderer2* renderer2;
     Engine* engine;
+    Scene scene;
 };

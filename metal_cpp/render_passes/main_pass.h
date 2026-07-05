@@ -7,19 +7,29 @@
 
 #pragma once
 
-#include "view/renderer2.h"
 #include "render_passes/render_pass.h"
+
 
 class MainPass : public RenderPass
 {
 public:
+    // owned / output
     TextureID depthTexture;
     TextureID sceneColorTexture;
     
-    void init() override;
-    void execute(RenderContext renderContext) override;
-    void renderNode(SceneNode* node, RenderContext renderContext, MTL::RenderCommandEncoder* encoder);
+    // input
+    TextureID shadowMapTexture;
+    
+    void init(RenderDevice renderDevice) override;
+    void execute(RenderContext renderContext, RenderGraph* renderGraph) override;
+    void resize(RenderContext renderContext) override;
+    
 private:
     MTL::RenderCommandEncoder* encoder = nullptr;
     MTL::RenderPassDescriptor* rpDesc = nullptr;
+    DepthStencilStateID depthState = 0;
+    SamplerID sampler = 0;
+    
+    void get_resources(RenderGraph* renderGraph);
+    void publish(RenderGraph* renderGraph);
 };

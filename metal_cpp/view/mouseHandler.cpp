@@ -23,17 +23,3 @@ void MouseHandler::update(){
         return;
     }
 }
-void MouseHandler::updateCamera(Camera *camera){
-    int width, height;
-    glfwGetWindowSize(glfwWindow, &width, &height);
-
-    camera->setAspect(float(width)/height);
-    
-    float dx = float(currX - lastX);
-    float dy = float(currY - lastY);
-    
-    
-    if(camera->relativeMouse){
-        camera->processMouse(dx, dy);
-    }
-}

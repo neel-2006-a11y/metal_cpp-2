@@ -40,17 +40,14 @@
     constexpr MTL::IndexType INDEX_FORMAT = MTL::IndexTypeUInt16;
 #endif
 
+// directional light
 #define CASCADES 4
 
+// buffer frames
 #define FIF 3
-
+// buffer size
 #define MAX_OBJECT 10
 #define MAX_MATERIALS 10
-
-struct Vertex {
-    simd::float2 pos;
-    simd::float3 color;
-};
 
 struct CameraUniforms{
     simd::float4x4 view;
@@ -115,5 +112,3 @@ struct DebugSettings{
     float volumeDensity = 0.03;
     float g = 0.6;
 };
-
-static uint BoidVersion = 2;

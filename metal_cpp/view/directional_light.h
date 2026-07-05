@@ -31,15 +31,23 @@ public:
     std::vector<simd::float4x4> proj;
     std::vector<simd::float4x4> viewProj;
     
-    
     DirectionalLight();
+    void update(Camera* camera);
     
+    std::vector<float> cascadeSplits;
+    std::vector<worldFrustrum> worldFrustrums;
+    
+    // -------------------
     simd::float4x4 View();
-    void fitCameraFrustrums(std::vector<worldFrustrum> frustrums); // updates proj vector
-    void fitCameraFrustrums2Sphere(std::vector<worldFrustrum> frustrums);
     std::vector<simd::float4x4> ViewProj();
     
     simd::float3 forward();
     simd::float3 up();
+    
+private:
+    void computeCascadeSplits(Camera* camera, float lambda);
+    void computeCascadeFrustrums(Camera* camera);
+    void fitCameraFrustrums(std::vector<worldFrustrum> frustrums); // updates proj vector
+    void fitCameraFrustrums2Sphere(std::vector<worldFrustrum> frustrums);
 };
 

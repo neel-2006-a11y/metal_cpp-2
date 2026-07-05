@@ -206,7 +206,7 @@ kernel void updateBoids_grid(
     + aliWeight * alignment
     + cohWeight * cohesion
     + mouseForce
-    /*+ flow*/;
+    + flow;
     
     self.velocity += accel * params.dt;
     

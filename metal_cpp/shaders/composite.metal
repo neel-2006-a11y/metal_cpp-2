@@ -41,8 +41,8 @@ fragment float4 compositeFS(VSOut in [[stage_in]],
     float2 sample_coord = float2(uv.x, 1-uv.y);
     float4 sceneCol = sceneTex.sample(samp, sample_coord);
     float4 volumeCol = volumeTex.sample(samp, sample_coord);
-    float densityCol = densityTex.sample(samp, sample_coord).r;
-    return float4(densityCol, densityCol, densityCol, 1.0);
+    float4 densityCol = densityTex.sample(samp, sample_coord);
+    return float4(densityCol.x, densityCol.y, densityCol.z, 1.0);
 //    return sceneCol + volumeCol;
 //    return sceneCol * 0.5 + volumeCol * 0.5;
 }

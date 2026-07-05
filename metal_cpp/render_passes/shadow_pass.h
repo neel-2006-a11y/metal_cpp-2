@@ -9,21 +9,29 @@
 
 #include "render_passes/render_pass.h"
 #include "resource_managers/resource_types.h"
-#include "view/renderer2.h"
 
 class ShadowPass : public RenderPass
 {
 public:
+    // owned / output
     TextureID shadowMapArray;
+    
+    // pipeline
     PipelineID shadowPipeline;
     
     int cascades = CASCADES;
     
-    void init() override;
-    void execute(RenderContext renderContext) override;
-    void renderNode(SceneNode* node, RenderContext renderContext, MTL::RenderCommandEncoder* encoder);
+    void init(RenderDevice renderDevice) override;
+    void execute(RenderContext renderContext, RenderGraph* renderGraph) override;
+    void resize(RenderContext renderContext) override;
     
 private:
+    
+    int shadow_res = 1024;
     MTL::RenderCommandEncoder* encoders[CASCADES] = {nullptr};
     MTL::RenderPassDescriptor* rpDescs[CASCADES] = {nullptr};
+    
+    DepthStencilStateID depthState = 0;
+    
+    void publish(RenderGraph* renderGraph);
 };

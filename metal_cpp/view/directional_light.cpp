@@ -12,6 +12,47 @@ DirectionalLight::DirectionalLight(){
     viewProj.resize(cascades);
 }
 
+void DirectionalLight::update(Camera *camera){
+    computeCascadeSplits(camera, 0.5);
+    computeCascadeFrustrums(camera);
+    fitCameraFrustrums(worldFrustrums);
+}
+
+void DirectionalLight::computeCascadeSplits(Camera *camera, float lambda){
+    cascadeSplits.resize(cascades+1);
+    cascadeSplits[0] = camera->nearZ;
+    for(int i = 0; i < cascades; i++){
+        float p = (i+1)/(float)cascades;
+        
+        float logSplit = camera->nearZ * pow(camera->farZ / camera->nearZ, p);
+        float linSplit = camera->nearZ + (camera->farZ-camera->nearZ)*p;
+        
+        cascadeSplits[i+1] = lambda * logSplit + (1-lambda) * linSplit;
+    }
+}
+
+void DirectionalLight::computeCascadeFrustrums(Camera* camera){
+    float ndcs[8][3] = {
+        {-1,-1,0}, {1,-1,0}, {1,1,0}, {-1,1,0},
+        {-1,-1,1}, {1,-1,1}, {1,1,1}, {-1,1,1},
+    };
+    int cascades = (int)cascadeSplits.size()-1;
+    simd::float4x4 view = camera->view();
+    
+    for(int i=0;i<cascades;i++){
+        simd::float4x4 proj = mtlm::perspective_projection(camera->fov, camera->aspect, cascadeSplits[i], cascadeSplits[i+1]);
+        simd::float4x4 VP = proj * view;
+        
+        worldFrustrum frust;
+        for (int i=0; i<8; i++) {
+            simd::float4 worldPos = simd::inverse(VP) * simd::float4{ndcs[i][0], ndcs[i][1], ndcs[i][2], 1.0};
+            worldPos /= worldPos.w;
+            frust.points.push_back(worldPos.xyz);
+        }
+        worldFrustrums.push_back(frust);
+    }
+}
+
 simd::float3 DirectionalLight::forward(){
     return simd::normalize(direction);
 }

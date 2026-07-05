@@ -20,7 +20,7 @@ struct Texture{
     std::vector<uint8_t> raw_data;
     
     // GPU-handle
-    void* gpuTexture = nullptr;
+    MTL::Texture* gpuTexture;
     
     bool uploaded = false;
 };

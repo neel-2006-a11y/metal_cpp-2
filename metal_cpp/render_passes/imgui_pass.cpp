@@ -6,17 +6,18 @@
 //
 
 #include "render_passes/imgui_pass.h"
+#include "scene/SceneNode.h"
 
-void ImGuiPass::init(){
+void ImGuiPass::init(RenderDevice renderDevice){
     rpDesc = MTL::RenderPassDescriptor::alloc()->init();
     
     rpDesc->colorAttachments()->object(0)->setLoadAction(MTL::LoadActionLoad);
     rpDesc->colorAttachments()->object(0)->setStoreAction(MTL::StoreActionStore);
 }
 
-void ImGuiPass::execute(RenderContext renderContext){
+void ImGuiPass::execute(RenderContext renderContext, RenderGraph* renderGraph){
     
-    rpDesc->colorAttachments()->object(0)->setTexture(drawableTexture);
+    rpDesc->colorAttachments()->object(0)->setTexture(renderContext.backBuffer);
     
     // ------------
     // Start frame
@@ -28,7 +29,7 @@ void ImGuiPass::execute(RenderContext renderContext){
     // ------------
     // UI
     // ------------
-    auto& dbg = renderContext.renderer->debug;
+    auto& dbg = renderContext.debugData;
     ImGui::Begin("Debug");
     
     ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
@@ -48,18 +49,24 @@ void ImGuiPass::execute(RenderContext renderContext){
     if(root){
         drawSceneHierarchy(root, selected);
     }
-    drawInspector(selected);
+    if(selected)
+        drawInspector(selected);
     
     // ------------
     // Gizmo
     // ------------
 //    translateGizmo.draw_and_update(&gizmoState, selected, *renderer.camera, renderer.curr_window_width, renderer.curr_window_height);
     
-    encoder = renderContext.renderer->cmd->renderCommandEncoder(rpDesc);
+    encoder = renderContext.cmd->renderCommandEncoder(rpDesc);
     
     ImGui::Render();
-    ImGui_ImplMetal_RenderDrawData(ImGui::GetDrawData(), renderContext.renderer->cmd, encoder);
+    ImGui_ImplMetal_RenderDrawData(ImGui::GetDrawData(), renderContext.cmd, encoder);
     encoder->endEncoding();
+}
+
+
+void ImGuiPass::resize(RenderContext renderContext){
+    
 }
 
 void ImGuiPass::drawSceneHierarchy(SceneNode *root, SceneNode *&selected){
@@ -118,15 +125,15 @@ void ImGuiPass::drawInspector(SceneNode* node)
         ImGui::DragFloat4("Rotation (quat)",
             (float*)&node->localT.rotation, 0.01f);
 
-        if (node->renderObject) {
+        if (node->renderComponent) {
             ImGui::Separator();
             ImGui::Text("Renderer");
 
-            ImGui::Text("MeshID: %d", node->renderObject->meshID);
-            ImGui::Text("MaterialID: %d", node->renderObject->materialID);
+            ImGui::Text("MeshID: %d", node->renderComponent->meshID);
+            ImGui::Text("MaterialID: %d", node->renderComponent->materialID);
 
             ImGui::DragFloat("TileScale",
-                (float*)&node->renderObject->tileScale, 0.1f);
+                (float*)&node->renderComponent->tileScale, 0.1f);
         }
     }
 

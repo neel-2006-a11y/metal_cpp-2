@@ -19,7 +19,7 @@ struct InteractParams {
     uint N;
     int x, y;
     int size; // square dim 2*size + 1
-    float val;
+    float4 val;
 };
 //void set_bnd(int N, int b, float* x){
 //    int i;
@@ -35,13 +35,13 @@ struct InteractParams {
 //    x[IX(N+1,N+1,N)] = 0.5 * (x[IX(N,N+1,N)] +x[IX(N+1,N,N)]);
 //}
 
-kernel void add_val(texture2d<float, access::write> x [[texture(0)]],
+kernel void add_val(texture2d<float, access::read_write> x [[texture(0)]],
                      constant InteractParams& ip [[buffer(2)]],
                      uint2 id [[thread_position_in_grid]]
                      ){
     int i0 = ip.x-ip.size, j0=ip.y-ip.size;
     if((i0 + id.x>0) && (i0 + id.x<=ip.N) && (j0 + id.y>0) && (j0 + id.y<=ip.N))
-        x.write(float4(ip.val,0,0,0), ushort2(i0+id.x, j0+id.y));
+        x.write(x.read(ushort2(i0+id.x,j0+id.y)) + float4(ip.val.x, ip.val.y, ip.val.z, 0), ushort2(i0+id.x, j0+id.y));
 }
 
 kernel void set_bnd_1(

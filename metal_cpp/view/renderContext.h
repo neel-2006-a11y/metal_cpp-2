@@ -7,25 +7,72 @@
 
 #pragma once
 
-#include "view/renderer2.h"
 #include "resource_managers/material_manager.h"
 #include "resource_managers/mesh_manager.h"
 #include "resource_managers/pipeline_manager.h"
 #include "resource_managers/texture_manager.h"
-#include "view/camera.h"
-#include "scene/SceneNode.h"
+#include "resource_managers/ModelLoader.h"
+#include "resource_managers/depthStencilManager.h"
+#include "resource_managers/sampler_manager.h"
+
+struct RenderObject {
+    MeshID mesh;
+    MaterialID material;
+    
+    size_t object_index;
+    size_t material_index;
+};
+
+struct RenderQueue{
+    std::vector<RenderObject> renderObjects;
+};
+
+struct ObjectBufferData{
+    size_t objectStride;
+    MTL::Buffer* objectBuffer;
+};
+
+struct MaterialBufferData{
+    size_t materialStride;
+    MTL::Buffer* materialBuffer;
+};
+
+struct RenderDevice {
+    MTL::Device* device;
+    MaterialManager* materialManager;
+    MeshManager* meshManager;
+    PipelineManager* pipelineManager;
+    TextureManager* textureManager;
+    ModelLoader* modelLoader;
+    DepthStencilManager* depthStencilStateManager;
+    SamplerManager* samplerManager;
+    
+    int curr_window_width, curr_window_height;
+    int curr_fb_width, curr_fb_height;
+};
 
 struct RenderContext{
-    Renderer2* renderer;
+    MTL::Device* device;
+    MTL::CommandBuffer* cmd;
+    MTL::Texture* backBuffer;
     
-    SceneNode* root;
-    Camera* camera;
+    MTL::Buffer* frameBuffer;
+    ObjectBufferData objectBufferData;
+    MaterialBufferData materialBufferData;
+    
+    RenderQueue renderQ;
     
     MaterialManager* materialManager;
     MeshManager* meshManager;
     PipelineManager* pipelineManager;
     TextureManager* textureManager;
+    ModelLoader* modelLoader;
+    DepthStencilManager* depthStencilStateManager;
+    SamplerManager* samplerManager;
+    
     
     int curr_window_width, curr_window_height;
     int curr_fb_width, curr_fb_height;
+    
+    DebugSettings debugData;
 };

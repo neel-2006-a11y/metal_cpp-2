@@ -13,4 +13,4 @@
 #include "view/renderer2.h"
 #include "view/renderContext.h"
 
-void bindMaterial(MaterialID mat_id, Material& mat, MTL::RenderCommandEncoder* encoder, RenderContext renderContext);
+void bindMaterial(size_t material_ind, Material& mat, MTL::RenderCommandEncoder* encoder, RenderContext renderContext);

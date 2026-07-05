@@ -10,18 +10,26 @@
 
 class VolumetricPass : public RenderPass{
 public:
+    // owned / output
+    TextureID blueNoiseTexture;
+    TextureID volumetricColorTexture;
+    
+    // input
     TextureID depthTexture;
     TextureID shadowMap;
-    TextureID volumetricColorTexture;
-    TextureID blueNoiseTexture;
-    
-    MTL::SamplerState* sampler;
     
     PipelineID volumetricPipeID;
     
-    void init() override;
-    void execute(RenderContext renderContext) override;
+    void init(RenderDevice renderDevice) override;
+    void execute(RenderContext renderContext, RenderGraph* renderGraph) override;
+    void resize(RenderContext renderContext) override;
+    
 private:
+    SamplerID sampler = 0;
     MTL::RenderCommandEncoder* encoder = nullptr;
     MTL::RenderPassDescriptor* rpDesc = nullptr;
+    int volumeDownFact = 2;
+    
+    void publish(RenderGraph* renderGraph);
+    void get_resources(RenderGraph* renderGraph);
 };

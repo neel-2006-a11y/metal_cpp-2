@@ -25,22 +25,10 @@ struct Transform{
     }
 };
 
-struct RenderObject
+struct RenderComponent
 {
     MeshID meshID;
     MaterialID materialID;
     
     float tileScale;
-    
-    uint32_t objectIndex = UINT32_MAX;
-};
-
-struct Entity{
-    Transform transform;
-    RenderObject renderObject;
-};
-
-struct Scene
-{
-    std::vector<Entity> objects;
 };

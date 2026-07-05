@@ -17,7 +17,8 @@ void KeyBoardHandler::update(){
         GLFW_KEY_Q, GLFW_KEY_E,
         GLFW_KEY_TAB,
         GLFW_KEY_K,
-        GLFW_KEY_L
+        GLFW_KEY_L,
+        GLFW_KEY_J
     };
     
     for(int key : keys){

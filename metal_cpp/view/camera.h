@@ -38,9 +38,11 @@ public:
     
     bool relativeMouse = false;
     
-    // ShadowMap helpers
-    std::vector<float> computeCascadeSplits(int num_cascades, float lambda);
-    std::vector<worldFrustrum> computeCascadeFrustrums(std::vector<float> cascadeSplits);
+    // projection
+    float fov;
+    float aspect;
+    float nearZ;
+    float farZ;
     
 private:
     // state
@@ -49,10 +51,4 @@ private:
     float pitch;
     float speed;
 
-    
-    // projection
-    float fov;
-    float aspect;
-    float nearZ;
-    float farZ;
 };

@@ -20,7 +20,7 @@ struct TextureBinding{
 
 struct SamplerBinding{
     uint32_t slot;
-    void* sampler;
+    SamplerID sampler;
 };
 
 struct Material

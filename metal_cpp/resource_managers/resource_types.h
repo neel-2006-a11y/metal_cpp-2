@@ -13,6 +13,8 @@ using TextureID = uint32_t;
 using PipelineID = uint32_t;
 using MaterialID = uint32_t;
 using ComputePipelineID = uint32_t;
+using DepthStencilStateID = uint32_t;
+using SamplerID = uint32_t;
 
 
 constexpr MeshID INVALID_MESH = 0;

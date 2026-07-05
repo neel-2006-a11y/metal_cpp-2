@@ -68,27 +68,6 @@ ComputePipelineID PipelineManager::createComputePipeline(ComputePipelineDesc &de
     
     MTL::ComputePipelineState* pipeline = device->newComputePipelineState(kernel, &error);
     
-//    __block MTL::ComputePipelineState* pipeline = nullptr;
-//    device->newComputePipelineState(
-//                                    cpDesc,
-//                                    MTL::PipelineOptionBufferTypeInfo,
-//                                    ^(MTL::ComputePipelineState* pPipeline, MTL::ComputePipelineReflection* pReflection, NS::Error* pError){
-//                                        if(pError){
-//                                            std::cout << "Pipeline compilation failed: " << pError->localizedDescription()->utf8String() << std::endl;
-//                                            return;
-//                                        }
-//                                        
-//                                        if(pReflection){
-//                                            NS::Array* arguments = pReflection->arguments();
-//                                            std::cout << "Kernel arguments count: " << arguments->count() << std::endl;
-//                                        }
-//                                        
-//                                        if(pPipeline){
-//                                            pipeline = pPipeline->retain();
-//                                            std::cout << "Compute pipeline state successfully created!" << std::endl;
-//                                        }
-//                                    }
-//                                    );
     // Release descriptor and kernel regardless of success
     cpDesc->release();
     kernel->release();

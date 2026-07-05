@@ -8,10 +8,49 @@
 #include "render_passes/shadow_pass.h"
 #include "passers/MTL_Texture_passer.h"
 #include "passers/MTL_Mesh_passer.h"
+#include "scene/SceneNode.h"
 #include "config.h"
 
-void ShadowPass::init(){
-    for(int i=0; i < CASCADES; i++){
+void ShadowPass::init(RenderDevice renderDevice){
+    // define vertex layout
+    VertexLayout layout;
+    layout.stride = sizeof(Vertex3D);
+    layout.attributes = {
+        {0, offsetof(Vertex3D, position), VertexAttributeType::Float3},
+        {1, offsetof(Vertex3D, color), VertexAttributeType::Float3},
+        {2, offsetof(Vertex3D, uv), VertexAttributeType::Float2},
+        {3, offsetof(Vertex3D, normal), VertexAttributeType::Float3}
+    };
+    
+    // define pipeline
+    PipelineDesc shadowDesc;
+    shadowDesc.vertexFunc = "shadowVertex";
+    shadowDesc.depthFormat = TextureFormat::Depth32Float;
+    shadowDesc.vertexLayout = layout;
+    
+    shadowPipeline = renderDevice.pipelineManager->createPipeline(shadowDesc);
+    
+    // depth state
+    DepthStencilDesc desc;
+    desc.compare = MTL::CompareFunctionLess;
+    desc.depthWrite = true;
+    
+    depthState = renderDevice.depthStencilStateManager->createDepthState(desc);
+    
+    //--------------
+    // build ShadowMap Texture
+    //--------------
+    TextureDesc shadowMap_desc;
+    shadowMap_desc.format = TextureFormat::Depth32Float;
+    shadowMap_desc.usage = TextureUsage::Sampled | TextureUsage::RenderTarget;
+    shadowMap_desc.storageMode = StorageMode::Shared;
+    shadowMap_desc.width = shadow_res;
+    shadowMap_desc.height = shadow_res;
+    shadowMap_desc.layers = cascades;
+    shadowMapArray = renderDevice.textureManager->createEmpty(shadowMap_desc);
+    
+    
+    for(int i=0; i < cascades; i++){
         rpDescs[i] = MTL::RenderPassDescriptor::alloc()->init();
         rpDescs[i]->depthAttachment()->setSlice(i);
         rpDescs[i]->depthAttachment()->setLoadAction(MTL::LoadActionClear);
@@ -20,10 +59,10 @@ void ShadowPass::init(){
     }
 }
 
-void ShadowPass::execute(RenderContext renderContext){
+void ShadowPass::execute(RenderContext renderContext, RenderGraph* renderGraph){
     
     Texture* shadowTex = renderContext.textureManager->get(shadowMapArray);
-    uploadTextureToGPU(*shadowTex, renderContext.renderer->device);
+    uploadTextureToGPU(*shadowTex, renderContext.device);
     
     MTL::RenderPipelineState* rp = renderContext.pipelineManager->get(shadowPipeline);
     
@@ -33,44 +72,61 @@ void ShadowPass::execute(RenderContext renderContext){
         
         rpDescs[i]->depthAttachment()->setTexture(mtlTex);
         
-        encoders[i] = renderContext.renderer->cmd->renderCommandEncoder(rpDescs[i]);
+        encoders[i] = renderContext.cmd->renderCommandEncoder(rpDescs[i]);
         auto* encoder = encoders[i];
         
         // Pipeline
         encoder->setRenderPipelineState(rp);
         
         // depth state
-        encoder->setDepthStencilState(renderContext.renderer->depthState);
+        encoder->setDepthStencilState(renderContext.depthStencilStateManager->getState(depthState)->gpu_depthState);
         
         // Frame Buffer
-        encoder->setVertexBuffer(renderContext.renderer->frameBuffer[renderContext.renderer->frameIndex], 0, 1);
+        encoder->setVertexBuffer(renderContext.frameBuffer, 0, 1);
         
         // cascade Index
         uint32_t cascadeInd = i;
         encoder->setVertexBytes(&cascadeInd, sizeof(uint32_t), 3);
         
-        renderNode(renderContext.root, renderContext, encoder);
+        for(auto ro : renderContext.renderQ.renderObjects){
+            Mesh2* mesh = renderContext.meshManager->getMesh(ro.mesh);
+            uploadMeshToGPU(*mesh, renderContext.device);
+            
+            size_t offset = ro.object_index * renderContext.objectBufferData.objectStride;
+            
+            encoder->setVertexBuffer(renderContext.objectBufferData.objectBuffer, offset, 2);
+            
+            // Mesh Vertex Data
+            encoder->setVertexBuffer((MTL::Buffer*)mesh->vertexBuffer, 0, 0);
+            
+            encoder->drawIndexedPrimitives(MTL::PrimitiveTypeTriangle, mesh->indexCount, INDEX_FORMAT, (MTL::Buffer*)mesh->indexBuffer, 0, 1);
+        }
         
         encoder->endEncoding();
     }
+    publish(renderGraph);
 }
 
-void ShadowPass::renderNode(SceneNode* node, RenderContext renderContext, MTL::RenderCommandEncoder* encoder){
-    if(node->renderObject){
-        Mesh2* mesh = renderContext.meshManager->getMesh(node->renderObject->meshID);
-        uploadMeshToGPU(*mesh, renderContext.renderer->device);
-        
-        size_t offset = node->renderObject->objectIndex * renderContext.renderer->objectStride;
-        
-        encoder->setVertexBuffer(renderContext.renderer->objectBuffer[renderContext.renderer->frameIndex], offset, 2);
-        
-        // Mesh Vertex Data
-        encoder->setVertexBuffer((MTL::Buffer*)mesh->vertexBuffer, 0, 0);
-        
-        encoder->drawIndexedPrimitives(MTL::PrimitiveTypeTriangle, mesh->indexCount, INDEX_FORMAT, (MTL::Buffer*)mesh->indexBuffer, 0, 1);
-    }
+void ShadowPass::publish(RenderGraph* renderGraph){
+    renderGraph->resourceRegistry->publishTexture(ResourceKey::ShadowMapTexture, shadowMapArray);
+}
+
+void ShadowPass::resize(RenderContext renderContext){
+    Texture* tex = renderContext.textureManager->get(shadowMapArray);
     
-    for(auto* child : node->children){
-        renderNode(child, renderContext, encoder);
+    // delete previous
+    if(tex && tex->uploaded){
+        tex->gpuTexture->release();
+        tex->uploaded = false;
     }
+    // build new
+    TextureDesc shadowMap_desc;
+    shadowMap_desc.format = TextureFormat::Depth32Float;
+    shadowMap_desc.usage = TextureUsage::Sampled | TextureUsage::RenderTarget;
+    shadowMap_desc.storageMode = StorageMode::Shared;
+    shadowMap_desc.width = shadow_res;
+    shadowMap_desc.height = shadow_res;
+    shadowMap_desc.layers = cascades;
+    shadowMapArray = renderContext.textureManager->createEmpty(shadowMap_desc);
+    
 }

@@ -7,14 +7,14 @@
 
 #pragma once
 
-#include "view/renderer2.h"
 #include "view/renderContext.h"
+#include "render_passes/render_graph.h"
 
 class RenderPass
 {
 public:
     virtual ~RenderPass() = default;
-    virtual void init() = 0;
-    virtual void execute(RenderContext renderContext) = 0;
-    virtual void renderNode(SceneNode* node, Renderer2& renderer, MTL::RenderCommandEncoder* encoder) {};
+    virtual void init(RenderDevice renderDevice) = 0;
+    virtual void execute(RenderContext renderContext, RenderGraph* renderGraph) = 0;
+    virtual void resize(RenderContext renderContext) = 0;
 };

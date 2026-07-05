@@ -6,18 +6,28 @@
 //
 
 #include "render_passes/render_graph.h"
+#include "render_passes/render_pass.h"
+
+RenderGraph::RenderGraph(ResourceRegistry* rR, FrameDataRegistry* fR){
+    resourceRegistry = rR;
+    frameDataRegistry = fR;
+}
 
 void RenderGraph::addPass(RenderPass *pass){
     passes.push_back(pass);
 }
 
-void RenderGraph::init(){
+void RenderGraph::init(RenderDevice renderDevice){
     for(auto* pass : passes){
-        pass->init();
+        pass->init(renderDevice);
     }
 }
-void RenderGraph::execute(RenderContext renderContext){
+
+void RenderGraph::execute(RenderContext renderContext, bool resize = false){
     for(auto* pass : passes){
-        pass->execute(renderContext);
+        if(resize){
+            pass->resize(renderContext);
+        }
+        pass->execute(renderContext, this);
     }
 }

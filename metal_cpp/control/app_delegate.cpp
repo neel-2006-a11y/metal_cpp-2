@@ -11,6 +11,9 @@
 #include <Metal/Metal.hpp>
 #include <QuartzCore/CAMetalLayer.hpp>
 
+#include "view/ResourceRegistry.h"
+#include "view/FrameDataRegistry.h"
+
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height){
     App* app = (App*)glfwGetWindowUserPointer(window);
@@ -19,7 +22,7 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height){
     app->resize(width, height, fbWidth, fbHeight);
 }
 
-App::App(){
+App::App(): scene(1,1){
     glfwInit();
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     
@@ -41,13 +44,7 @@ App::App(){
     std::cout << metalLayer->drawableSize().width << " " << metalLayer->drawableSize().height << std::endl;
     
     renderer2 = new Renderer2(device, windowBridge.metalLayer, windowBridge.glfwWindow);
-    engine = new Engine(renderer2);
-    
-    int fbWidth, fbHeight;
-    int width, height;
-    glfwGetWindowSize(window, &width, &height);
-    glfwGetFramebufferSize(window, &fbWidth, &fbHeight);
-    resize(width, height, fbWidth, fbHeight);
+    engine = new Engine(windowBridge.glfwWindow);
 }
 
 App::~App(){
@@ -60,15 +57,27 @@ App::~App(){
 
 void App::Run(){
     engine->init();
+    renderer2->init();
+    scene.buildSampleScene(renderer2->renderDevice());
+    
     while(!glfwWindowShouldClose(windowBridge.glfwWindow)){
 
+        NS::AutoreleasePool* pool = NS::AutoreleasePool::alloc()->init();
+        
         glfwPollEvents();
         
-        engine->update();
-        engine->render();
+        ResourceRegistry rReg;
+        FrameDataRegistry fdReg;
+        
+        engine->update(scene);
+        engine->publish(rReg, fdReg);
+        
+        renderer2->render(scene, rReg, fdReg);
+        
+        pool->release();
     }
 }
 
 void App::resize(int width, int height, int fbWidth, int fbHeight){
-    engine->resize(width, height, fbWidth, fbHeight);
+    renderer2->resize(width, height, fbWidth, fbHeight);
 }
