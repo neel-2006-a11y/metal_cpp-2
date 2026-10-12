@@ -28,7 +28,7 @@ private:
     SamplerID sampler = 0;
     MTL::RenderCommandEncoder* encoder = nullptr;
     MTL::RenderPassDescriptor* rpDesc = nullptr;
-    int volumeDownFact = 2;
+    int volumeDownFact = 1;
     
     void publish(RenderGraph* renderGraph);
     void get_resources(RenderGraph* renderGraph);

@@ -16,10 +16,10 @@ void ShadowPass::init(RenderDevice renderDevice){
     VertexLayout layout;
     layout.stride = sizeof(Vertex3D);
     layout.attributes = {
-        {0, offsetof(Vertex3D, position), VertexAttributeType::Float3},
-        {1, offsetof(Vertex3D, color), VertexAttributeType::Float3},
-        {2, offsetof(Vertex3D, uv), VertexAttributeType::Float2},
-        {3, offsetof(Vertex3D, normal), VertexAttributeType::Float3}
+        {0,0, offsetof(Vertex3D, position), VertexAttributeType::Float3},
+        {0,1, offsetof(Vertex3D, color), VertexAttributeType::Float3},
+        {0,2, offsetof(Vertex3D, uv), VertexAttributeType::Float2},
+        {0,3, offsetof(Vertex3D, normal), VertexAttributeType::Float3}
     };
     
     // define pipeline
@@ -41,6 +41,7 @@ void ShadowPass::init(RenderDevice renderDevice){
     // build ShadowMap Texture
     //--------------
     TextureDesc shadowMap_desc;
+    shadowMap_desc.textureType = TextureType::TextureType2DArray;
     shadowMap_desc.format = TextureFormat::Depth32Float;
     shadowMap_desc.usage = TextureUsage::Sampled | TextureUsage::RenderTarget;
     shadowMap_desc.storageMode = StorageMode::Shared;
@@ -84,6 +85,9 @@ void ShadowPass::execute(RenderContext renderContext, RenderGraph* renderGraph){
         // Frame Buffer
         encoder->setVertexBuffer(renderContext.frameBuffer, 0, 1);
         
+        // View Buffer
+        encoder->setVertexBytes(&renderContext.viewUniforms, sizeof(ViewUniforms), 4);
+        
         // cascade Index
         uint32_t cascadeInd = i;
         encoder->setVertexBytes(&cascadeInd, sizeof(uint32_t), 3);
@@ -121,6 +125,7 @@ void ShadowPass::resize(RenderContext renderContext){
     }
     // build new
     TextureDesc shadowMap_desc;
+    shadowMap_desc.textureType = TextureType::TextureType2DArray;
     shadowMap_desc.format = TextureFormat::Depth32Float;
     shadowMap_desc.usage = TextureUsage::Sampled | TextureUsage::RenderTarget;
     shadowMap_desc.storageMode = StorageMode::Shared;

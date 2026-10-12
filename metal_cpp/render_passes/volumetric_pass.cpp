@@ -5,6 +5,7 @@
 //  Created by Neel on 04/04/26.
 //
 
+
 #include "render_passes/volumetric_pass.h"
 #include "passers/MTL_Texture_passer.h"
 
@@ -64,8 +65,10 @@ void VolumetricPass::execute(RenderContext renderContext, RenderGraph* renderGra
     MTL::RenderPipelineState* rp = renderContext.pipelineManager->get(volumetricPipeID);
     encoder->setRenderPipelineState(rp);
     
-    encoder->setFragmentTexture((MTL::Texture*)depthTex->gpuTexture, 0);
-    encoder->setFragmentTexture((MTL::Texture*)shadowMapTex->gpuTexture, 1);
+    if(depthTex)
+        encoder->setFragmentTexture((MTL::Texture*)depthTex->gpuTexture, 0);
+    if(shadowMap)
+        encoder->setFragmentTexture((MTL::Texture*)shadowMapTex->gpuTexture, 1);
     encoder->setFragmentTexture((MTL::Texture*)blueNoiseTex->gpuTexture, 2);
     encoder->setFragmentSamplerState(renderContext.samplerManager->getState(sampler)->state, 0);
     encoder->setFragmentBuffer(renderContext.frameBuffer, 0, 1);

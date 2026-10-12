@@ -15,9 +15,12 @@
 enum class ResourceKey : uint32_t{
     SceneColorTexture,
     SceneDepthTexture,
+    SceneNormalTexture,
     
     ShadowMapTexture,
     VolumetricTexture,
+    
+    OutlineTexture,
     
     DensityTexture
 };

@@ -11,6 +11,15 @@ using namespace metal;
 
 #define CASCADES 4
 
+#define FRAME_BUFFER_BIND 1
+#define OBJ_BUFFER_BIND 2
+#define MAT_BUFFER_BIND 3
+#define VIEW_BUFFER_BIND 4
+
+#define SHADOW_MAP_BIND 0
+#define DIFFUSE_BIND 2
+
+
 struct VertexInput3D_2{
     float3 position [[attribute(0)]];
     float3 color [[attribute(1)]];
@@ -25,21 +34,37 @@ struct VertexOutput3D_2{
     float3 color;
     float2 uv;
     float viewDepth;
+    float4 cameraClipPos;
+};
+
+struct FragmentOutput{
+    float4 color [[color(0)]];
+    float4 normal [[color(1)]];
 };
 
 struct ObjectUniforms_2{
     float4x4 model;
     float4x4 invModel;
-    float tileScale;
 };
 
-struct MaterialUniforms{
-    int hasDiffuse;
+struct ViewUniforms{
+    //--------------
+    // Camera Uniforms
+    //--------------
+    float4x4 view;
+    float4x4 proj;
+    float4x4 viewProj;
+    float4x4 invViewProj;
     
-//    float roughness;
-//    float metallic;
-//
-//    simd::float3 baseColor;
+    float3 cameraPos;
+    
+    float far;
+    
+    int has_oblique_plane;
+    float4 plane;
+    
+    float4x4 sunVPs[CASCADES];
+    float cascadeSplits[CASCADES];
 };
 
 struct FrameUniforms_2{
@@ -49,6 +74,7 @@ struct FrameUniforms_2{
     float4x4 invViewProj;
     
     float3 cameraPos;
+    float far;
     
     float intensity;
     float3 direction;
@@ -59,12 +85,16 @@ struct FrameUniforms_2{
     float cascadeSplits[CASCADES];
     
     float BayerScale;
+    float exp_factor;
     
     float volumeDensity;
     float g;
+    
+    int has_oblique_plane;
+    float4 plane;
 };
 
-static inline int select_cascade_2(float viewDepth, constant float* cascadeSplits, int num_cascades){
+static inline int select_cascade(float viewDepth, constant float* cascadeSplits, int num_cascades){
     int cascadeIndex = 0;
     for(int i = 1; i <= num_cascades; i++){
         if(viewDepth <= cascadeSplits[i]){
@@ -78,7 +108,7 @@ static inline int select_cascade_2(float viewDepth, constant float* cascadeSplit
     return cascadeIndex-1;
 }
 
-static inline float shadowCalculationCSM_dither_2(float3 worldPos, texture2d_array<float> shadowMap, sampler shadowSampler, float4x4 lightVP, int cascade){
+static inline float shadowCalculationCSM(float3 worldPos, texture2d_array<float> shadowMap, sampler shadowSampler, float4x4 lightVP, int cascade){
     float4 lightClip = lightVP * float4(worldPos, 1.0);
     float3 proj = lightClip.xyz / lightClip.w;
     

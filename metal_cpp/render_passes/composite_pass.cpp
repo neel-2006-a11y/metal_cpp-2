@@ -42,12 +42,15 @@ void CompositePass::execute(RenderContext renderContext, RenderGraph* renderGrap
     Texture* tex = renderContext.textureManager->get(inputColor);
     Texture* volTex = renderContext.textureManager->get(volumeColor);
     Texture* densTex = renderContext.textureManager->get(densityTexture);
+    Texture* outlineTex = renderContext.textureManager->get(outlineTexture);
     if(tex)
         encoder->setFragmentTexture((MTL::Texture*)tex->gpuTexture, 0);
     if(volTex)
         encoder->setFragmentTexture((MTL::Texture*)volTex->gpuTexture, 1);
     if(densTex)
         encoder->setFragmentTexture((MTL::Texture*)densTex->gpuTexture, 2);
+    if(outlineTex)
+        encoder->setFragmentTexture((MTL::Texture*)outlineTex->gpuTexture, 3);
     
     encoder->setFragmentSamplerState(renderContext.samplerManager->getState(sampler)->state, 0);
     
@@ -61,6 +64,7 @@ void CompositePass::get_resources(RenderGraph* renderGraph) {
     inputColor = renderGraph->resourceRegistry->getTexture(ResourceKey::SceneColorTexture);
     volumeColor = renderGraph->resourceRegistry->getTexture(ResourceKey::VolumetricTexture);
     densityTexture = renderGraph->resourceRegistry->getTexture(ResourceKey::DensityTexture);
+    outlineTexture = renderGraph->resourceRegistry->getTexture(ResourceKey::OutlineTexture);
 }
 
 void CompositePass::resize(RenderContext renderContext){}

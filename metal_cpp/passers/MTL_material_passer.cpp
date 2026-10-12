@@ -9,7 +9,7 @@
 #include "passers/MTL_Texture_passer.h"
 #include "view/renderContext.h"
 
-void bindMaterial(size_t material_ind, Material& mat, MTL::RenderCommandEncoder* encoder, RenderContext renderContext){
+void bindMaterial(Material& mat, MTL::RenderCommandEncoder* encoder, RenderContext renderContext){
     
     // textures
     for(auto& t : mat.textures){
@@ -27,6 +27,7 @@ void bindMaterial(size_t material_ind, Material& mat, MTL::RenderCommandEncoder*
     }
     
     // uniforms
-    size_t offset = (material_ind) * renderContext.materialBufferData.materialStride;
-    encoder->setFragmentBuffer(renderContext.materialBufferData.materialBuffer, offset, 3);
+    size_t offset = mat.uniform_offset;
+    if(mat.uniforms.data.size()>0)
+        encoder->setFragmentBuffer(renderContext.materialBufferData.materialBuffer, offset, 3);
 }

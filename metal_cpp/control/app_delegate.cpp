@@ -17,9 +17,7 @@
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height){
     App* app = (App*)glfwGetWindowUserPointer(window);
-    int fbWidth, fbHeight;
-    glfwGetFramebufferSize(window, &fbWidth, &fbHeight);
-    app->resize(width, height, fbWidth, fbHeight);
+    app->to_resize = true;
 }
 
 App::App(): scene(1,1){
@@ -27,6 +25,8 @@ App::App(): scene(1,1){
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     
     GLFWwindow* window = glfwCreateWindow(800, 600, "Metal-cpp", nullptr, nullptr);
+    
+    
     // set user pointer to this
     glfwSetWindowUserPointer(window, this);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
@@ -41,9 +41,18 @@ App::App(): scene(1,1){
     
     AttachMetalLayer(windowBridge);
     
+    int window_w,window_h, fb_w,fb_h;
+    glfwGetWindowSize(window, &window_w, &window_h);
+    glfwGetFramebufferSize(window, &fb_w, &fb_h);
+    
+    //--------------
+    // set initial drawable size drawable size
+    //--------------
+    metalLayer->setDrawableSize(CGSizeMake(fb_w, fb_h));
+    
     std::cout << metalLayer->drawableSize().width << " " << metalLayer->drawableSize().height << std::endl;
     
-    renderer2 = new Renderer2(device, windowBridge.metalLayer, windowBridge.glfwWindow);
+    renderer2 = new Renderer2(device, windowBridge.metalLayer, windowBridge.glfwWindow, &frameSemaphore);
     engine = new Engine(windowBridge.glfwWindow);
 }
 
@@ -58,7 +67,9 @@ App::~App(){
 void App::Run(){
     engine->init();
     renderer2->init();
-    scene.buildSampleScene(renderer2->renderDevice());
+    RenderDevice rd = renderer2->renderDevice();
+    engine->get_references(rd);
+    scene.buildSampleScene(rd);
     
     while(!glfwWindowShouldClose(windowBridge.glfwWindow)){
 
@@ -69,15 +80,31 @@ void App::Run(){
         ResourceRegistry rReg;
         FrameDataRegistry fdReg;
         
-        engine->update(scene);
+        dispatch_semaphore_wait(frameSemaphore, DISPATCH_TIME_FOREVER);
+        engine->update(scene); // outputs a RenderView list
         engine->publish(rReg, fdReg);
         
-        renderer2->render(scene, rReg, fdReg);
+        if(to_resize){
+            resize();
+            to_resize = false;
+        }
+        
+        std::vector<RenderView> renderList;
+        engine->make_renderViews(scene, renderList);
+//        RenderView rv;
+//        rv.camera = &scene.activeCamera();
+//        rv.useDrawable = true;
+//        renderList.push_back(rv);
+        renderer2->render(scene, rReg, fdReg, renderList);
+        
+        // renderer2->render(scene, rReg, fdReg, renderList)
+        // inside it will render each renderView in order and also perform some operation to change the materials textures for some of the portal materials
+//        renderer2->render(scene, rReg, fdReg);
         
         pool->release();
     }
 }
 
-void App::resize(int width, int height, int fbWidth, int fbHeight){
-    renderer2->resize(width, height, fbWidth, fbHeight);
+void App::resize(){
+    renderer2->resize();
 }

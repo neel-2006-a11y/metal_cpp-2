@@ -27,7 +27,7 @@ public:
     
 private:
     
-    int shadow_res = 1024;
+    int shadow_res = 512;
     MTL::RenderCommandEncoder* encoders[CASCADES] = {nullptr};
     MTL::RenderPassDescriptor* rpDescs[CASCADES] = {nullptr};
     

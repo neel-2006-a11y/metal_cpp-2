@@ -208,7 +208,7 @@ void FluidPass::make_pipelines(PipelineManager *pipeMan){
 
 //================================================================================================
 
-void FluidPass::set_bnd_2(int b, TextureID x, RenderContext renderContext){
+void FluidPass::set_bnd_2(int b, TextureID x, RenderContext renderContext, MTL::ComputeCommandEncoder* enc){
     auto set_bnd_1_PS = renderContext.pipelineManager->getCompute(set_bnd_1_pipe);
     auto set_bnd_2_PS = renderContext.pipelineManager->getCompute(set_bnd_2_pipe);
     
@@ -218,25 +218,23 @@ void FluidPass::set_bnd_2(int b, TextureID x, RenderContext renderContext){
     fluidParams.N = N;
     fluidParams.b = b;
     
-    auto enc1 = renderContext.cmd->computeCommandEncoder();
     // first pass (borders)
-    enc1->setComputePipelineState(set_bnd_1_PS);
-    enc1->setTexture((MTL::Texture*)x_tex->gpuTexture, 0);
-    enc1->setBytes(&fluidParams, sizeof(FluidParams), 1);
+    enc->setComputePipelineState(set_bnd_1_PS);
+    enc->setTexture((MTL::Texture*)x_tex->gpuTexture, 0);
+    enc->setBytes(&fluidParams, sizeof(FluidParams), 1);
     
     MTL::Size gridSize = MTL::Size(N, 1, 1);
     MTL::Size tgSize = MTL::Size(set_bnd_1_PS->maxTotalThreadsPerThreadgroup(),1,1);
-    enc1->dispatchThreads(gridSize, tgSize);
+    enc->dispatchThreads(gridSize, tgSize);
     
-    // second pass (corners)
-    enc1->setComputePipelineState(set_bnd_2_PS);
-    enc1->setTexture((MTL::Texture*)x_tex->gpuTexture, 0);
-    enc1->setBytes(&fluidParams, sizeof(FluidParams), 1);
-    
-    MTL::Size gridSize2 = MTL::Size(1, 1, 1);
-    MTL::Size tgSize2 = MTL::Size(1,1,1);
-    enc1->dispatchThreads(gridSize, tgSize);
-    enc1->endEncoding();
+//    // second pass (corners)
+//    enc->setComputePipelineState(set_bnd_2_PS);
+//    enc->setTexture((MTL::Texture*)x_tex->gpuTexture, 0);
+//    enc->setBytes(&fluidParams, sizeof(FluidParams), 1);
+//    
+//    MTL::Size gridSize2 = MTL::Size(1, 1, 1);
+//    MTL::Size tgSize2 = MTL::Size(1,1,1);
+//    enc->dispatchThreads(gridSize, tgSize);
 }
 
 void FluidPass::add_source_2(TextureID x, TextureID s, float dt, RenderContext renderContext){
@@ -291,9 +289,9 @@ void FluidPass::diffuse_2(int b, TextureID& x, TextureID x0, TextureID& PP_tex, 
         enc->setBytes(&fp, sizeof(FluidParams), 1);
         
         enc->dispatchThreads(gridSize, tgSize);
-        enc->endEncoding();
         
-        set_bnd_2(b, x, renderContext);
+        set_bnd_2(b, x, renderContext, enc);
+        enc->endEncoding();
     }
 }
 
@@ -325,9 +323,11 @@ void FluidPass::advect_2(int b, TextureID d, TextureID d0, TextureID u, TextureI
     MTL::Size tgSize = MTL::Size(w,h,1);
     
     enc->dispatchThreads(gridSize, tgSize);
+    
+    set_bnd_2(b, d, renderContext, enc);
     enc->endEncoding();
     
-    set_bnd_2(b, d, renderContext);
+    
 }
 
 void FluidPass::project_2(TextureID u, TextureID v, TextureID& p, TextureID div, RenderContext renderContext){
@@ -357,9 +357,11 @@ void FluidPass::project_2(TextureID u, TextureID v, TextureID& p, TextureID div,
     MTL::Size tgSize = MTL::Size(w,h,1);
     
     div_enc->dispatchThreads(gridSize, tgSize);
+    
+    set_bnd_2(0, div, renderContext, div_enc); set_bnd_2(0, p, renderContext, div_enc);
+    
     div_enc->endEncoding();
     
-    set_bnd_2(0, div, renderContext); set_bnd_2(0, p, renderContext);
     
     // second pass (p calculation)
     for (int k=0; k<steps; k++) {
@@ -376,9 +378,9 @@ void FluidPass::project_2(TextureID u, TextureID v, TextureID& p, TextureID div,
         enc->setTexture((MTL::Texture*)p_tex->gpuTexture, 2);
         
         enc->dispatchThreads(gridSize, tgSize);
-        enc->endEncoding();
         
-        set_bnd_2(0, p, renderContext);
+        set_bnd_2(0, p, renderContext, enc);
+        enc->endEncoding();
     }
     
     // third pass (subtract p from u and v)
@@ -392,9 +394,11 @@ void FluidPass::project_2(TextureID u, TextureID v, TextureID& p, TextureID div,
     sub_p_enc->setBytes(&fp, sizeof(FluidParams), 1);
     
     sub_p_enc->dispatchThreads(gridSize, tgSize);
+    
+    set_bnd_2(1, u, renderContext, sub_p_enc);
+    set_bnd_2(2, v, renderContext, sub_p_enc);
     sub_p_enc->endEncoding();
-    set_bnd_2(1, u, renderContext);
-    set_bnd_2(2, v, renderContext);
+    
 }
 
 

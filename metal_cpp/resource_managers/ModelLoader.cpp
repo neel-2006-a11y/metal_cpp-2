@@ -57,13 +57,12 @@ SceneNode* ModelLoader::processNode2(aiNode* ainode, const aiScene* scene){
         
         meshNode->name = mesh->mName.C_Str();
         meshNode->renderComponent = processMesh2(mesh, scene);
-        meshNode->renderComponent->tileScale = 1.0;
     }
     
     // children
     for(uint32_t i=0; i<ainode->mNumChildren; i++){
         SceneNode* child = processNode2(ainode->mChildren[i], scene);
-        assignParent(child, node);
+        Node::assignParent(child, node);
     }
     
     return node;

@@ -49,7 +49,6 @@ void uploadTextureToGPU(Texture& tex, MTL::Device* device){
         // teture2DArray
         for(int layer = 0; layer < d.layers; layer++){
             uint8_t* layer_ptr = base_ptr + layer * bytesPerImage;
-            
             gpuTex->replaceRegion(region, 0, layer, layer_ptr, bytesPerRow, 0);
         }
     }else{

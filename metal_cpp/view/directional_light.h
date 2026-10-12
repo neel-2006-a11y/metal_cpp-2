@@ -47,7 +47,7 @@ public:
 private:
     void computeCascadeSplits(Camera* camera, float lambda);
     void computeCascadeFrustrums(Camera* camera);
-    void fitCameraFrustrums(std::vector<worldFrustrum> frustrums); // updates proj vector
+    void fitCameraFrustrums(const std::vector<worldFrustrum>& frustrums); // updates proj vector
     void fitCameraFrustrums2Sphere(std::vector<worldFrustrum> frustrums);
 };
 

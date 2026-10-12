@@ -29,6 +29,4 @@ struct RenderComponent
 {
     MeshID meshID;
     MaterialID materialID;
-    
-    float tileScale;
 };

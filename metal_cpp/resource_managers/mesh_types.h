@@ -19,6 +19,7 @@ enum class VertexAttributeType{
 
 // Vertex Attribute
 struct VertexAttribute {
+    uint32_t buffer_index = 0;
     uint32_t location; // shader location
     uint32_t offset;
     VertexAttributeType type;

@@ -28,13 +28,26 @@ void MainPass::init(RenderDevice renderDevice){
     col_Desc.height = renderDevice.curr_fb_height;
     sceneColorTexture = renderDevice.textureManager->createEmptyNoCPU(col_Desc);
     
+    TextureDesc norm_Desc;
+    norm_Desc.format = TextureFormat::RGBA16Float;
+    norm_Desc.usage = TextureUsage::RenderTarget | TextureUsage::Sampled;
+    norm_Desc.storageMode = StorageMode::Shared;
+    norm_Desc.width = renderDevice.curr_fb_width;
+    norm_Desc.height = renderDevice.curr_fb_height;
+    normalTexture = renderDevice.textureManager->createEmptyNoCPU(norm_Desc);
+    
     
     // render pass descriptor
     rpDesc = MTL::RenderPassDescriptor::alloc()->init();
     
     rpDesc->colorAttachments()->object(0)->setLoadAction(MTL::LoadActionClear);
     rpDesc->colorAttachments()->object(0)->setStoreAction(MTL::StoreActionStore);
-    rpDesc->colorAttachments()->object(0)->setClearColor({0.1, 0.1, 0.15, 1.0});
+//    rpDesc->colorAttachments()->object(0)->setClearColor({0.0, 0.0, 1.0, 1.0});
+    rpDesc->colorAttachments()->object(0)->setClearColor({1.0, 0.0, 0.0, 1.0});
+    
+    rpDesc->colorAttachments()->object(1)->setLoadAction(MTL::LoadActionClear);
+    rpDesc->colorAttachments()->object(1)->setStoreAction(MTL::StoreActionStore);
+    rpDesc->colorAttachments()->object(1)->setClearColor({0,0,0,1.0});
     
     rpDesc->depthAttachment()->setLoadAction(MTL::LoadActionClear);
     rpDesc->depthAttachment()->setStoreAction(MTL::StoreActionStore);
@@ -60,8 +73,12 @@ void MainPass::execute(RenderContext renderContext, RenderGraph* renderGraph){
     Texture* sceneColor = renderContext.textureManager->get(sceneColorTexture);
     uploadTextureToGPU(*sceneColor, renderContext.device);
     rpDesc->colorAttachments()->object(0)->setTexture((MTL::Texture*)sceneColor->gpuTexture);
-    
 
+    // Normal attachment
+    Texture* normTex = renderContext.textureManager->get(normalTexture);
+    uploadTextureToGPU(*normTex, renderContext.device);
+    rpDesc->colorAttachments()->object(1)->setTexture((MTL::Texture*)normTex->gpuTexture);
+    
     // Depth attachment
     Texture* depth = renderContext.textureManager->get(depthTexture);
     uploadTextureToGPU(*depth, renderContext.device);
@@ -77,14 +94,18 @@ void MainPass::execute(RenderContext renderContext, RenderGraph* renderGraph){
     encoder->setVertexBuffer(renderContext.frameBuffer, 0, 1);
     encoder->setFragmentBuffer(renderContext.frameBuffer, 0, 1);
     
-    MTL::Viewport viewPort;
-    viewPort.originX = 0;
-    viewPort.originY = 0;
-    viewPort.width = renderContext.curr_fb_width;
-    viewPort.height = renderContext.curr_fb_height;
-    viewPort.znear = 0.0;
-    viewPort.zfar = 1.0;
-    encoder->setViewport(viewPort);
+    // viewBuffer
+    encoder->setVertexBytes(&renderContext.viewUniforms, sizeof(ViewUniforms), 4);
+    encoder->setFragmentBytes(&renderContext.viewUniforms, sizeof(ViewUniforms), 4);
+    
+//    MTL::Viewport viewPort;
+//    viewPort.originX = 0;
+//    viewPort.originY = 0;
+//    viewPort.width = renderContext.curr_fb_width;
+//    viewPort.height = renderContext.curr_fb_height;
+//    viewPort.znear = 0.0;
+//    viewPort.zfar = 1.0;
+//    encoder->setViewport(viewPort);
     
     // Draw everything
     for(auto ro : renderContext.renderQ.renderObjects){
@@ -101,11 +122,12 @@ void MainPass::execute(RenderContext renderContext, RenderGraph* renderGraph){
         encoder->setVertexBuffer(objBuffer, offset, 2);
         encoder->setFragmentBuffer(objBuffer, offset, 2);
         
-        bindMaterial(ro.material_index, *mat, encoder, renderContext);
+        bindMaterial(*mat, encoder, renderContext);
         
         // temporary fix
         Texture* shadowMap = renderContext.textureManager->get(shadowMapTexture);
-        encoder->setFragmentTexture((MTL::Texture*)shadowMap->gpuTexture, 0);
+        if(shadowMap)
+            encoder->setFragmentTexture((MTL::Texture*)shadowMap->gpuTexture, 0);
         encoder->setFragmentSamplerState(renderContext.samplerManager->getState(sampler)->state, 0);
         
         encoder->setVertexBuffer((MTL::Buffer*)mesh->vertexBuffer, 0, 0);
@@ -126,6 +148,7 @@ void MainPass::get_resources(RenderGraph *renderGraph){
 void MainPass::publish(RenderGraph* renderGraph){
     renderGraph->resourceRegistry->publishTexture(ResourceKey::SceneColorTexture, sceneColorTexture);
     renderGraph->resourceRegistry->publishTexture(ResourceKey::SceneDepthTexture, depthTexture);
+    renderGraph->resourceRegistry->publishTexture(ResourceKey::SceneNormalTexture, normalTexture);
 }
 
 void MainPass::resize(RenderContext renderContext){
@@ -164,5 +187,23 @@ void MainPass::resize(RenderContext renderContext){
     col_Desc.width = renderContext.curr_fb_width;
     col_Desc.height = renderContext.curr_fb_height;
     sceneColorTexture = renderContext.textureManager->createEmptyNoCPU(col_Desc);
+    
+    //--------------
+    // Recreate normal Texture
+    //--------------
+    // delete
+    Texture* normTex = renderContext.textureManager->get(normalTexture);
+    if(normTex && normTex->uploaded){
+        ((MTL::Texture*)normTex->gpuTexture)->release();
+        normTex->uploaded = false;
+    }
+    // create
+    TextureDesc norm_Desc;
+    norm_Desc.format = TextureFormat::RGBA16Float;
+    norm_Desc.usage = TextureUsage::RenderTarget | TextureUsage::Sampled;
+    norm_Desc.storageMode = StorageMode::Shared;
+    norm_Desc.width = renderContext.curr_fb_width;
+    norm_Desc.height = renderContext.curr_fb_height;
+    normalTexture = renderContext.textureManager->createEmptyNoCPU(norm_Desc);
 }
 

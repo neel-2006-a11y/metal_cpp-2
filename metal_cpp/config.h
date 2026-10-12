@@ -17,9 +17,19 @@
 #include <fstream>
 #include <sstream>
 
-// 0->8bit , 1->16bit
-#define HALFTONE_DIM 8
 
+#define PORTAL_RESOLUTION 512
+#define PORTAL_DEPTH 3
+
+#define HALFTONE_MAT_DIM 8
+#define HALFTONE_DIM 3*(HALFTONE_MAT_DIM/2)*(HALFTONE_MAT_DIM/2) + 1
+
+#define HATCH_MAT_DIM 8
+#define HATCH_DIM 3*(HATCH_MAT_DIM/2)*(HATCH_MAT_DIM/2) + 1
+
+#define MAX_HATCH_DIR 7
+
+// 0->8bit , 1->16bit
 #define HALFTONE_TEXTURE_16BIT 1
 #if HALFTONE_TEXTURE_16BIT
     using HalftonePixel = uint16_t;
@@ -45,6 +55,7 @@
 
 // buffer frames
 #define FIF 3
+
 // buffer size
 #define MAX_OBJECT 10
 #define MAX_MATERIALS 10
@@ -58,18 +69,44 @@ struct CameraUniforms{
 struct ObjectUniforms{
     simd::float4x4 model;
     simd::float4x4 invModel;
-    float tileScale = 1.0;
 };
 
 #define DIFFUSE_SLOT 2
 
-struct MaterialUniforms{
-    int hasDiffuse = 0;
+struct DebugSettings{
+    simd::float3 sunDirection = { 1.0f, 0.3f, 1.0f };
+    float BayerScale = 0.5;
+    float exp_factor = 0.5;
+    float volumeDensity = 0.03;
+    float g = 0.6;
     
-//    float roughness;
-//    float metallic;
-//    
-//    simd::float3 baseColor;
+    float depth_thres = 0.025;
+    float normal_thres = 0.3;
+    int ink_width = 10;
+//    simd::float3* sunDirection;
+//    float* BayerScale;
+//    float* volumeDensity;
+//    float* g;
+};
+
+struct ViewUniforms{
+    //--------------
+    // Camera Uniforms
+    //--------------
+    simd::float4x4 view;
+    simd::float4x4 proj;
+    simd::float4x4 viewProj;
+    simd::float4x4 invViewProj;
+    
+    simd::float3 cameraPos;
+    
+    float far;
+    
+    int has_oblique_plane;
+    simd::float4 plane;
+    
+    simd::float4x4 sunVPs[CASCADES];
+    float cascadeSplits[CASCADES];
 };
 
 struct FrameUniforms{
@@ -82,6 +119,7 @@ struct FrameUniforms{
     simd::float4x4 invViewProj;
     
     simd::float3 cameraPos;
+    float far;
     
     //--------------
     // Directional Light
@@ -98,17 +136,14 @@ struct FrameUniforms{
     // Dithering Uniforms
     //--------------
     float BayerScale; // should be in material uniforms, but here for now
+    float exp_factor;
     
     //--------------
     // Volumetric Uniforms
     //--------------
     float volumeDensity;
     float g; // HG Phase param
-};
-
-struct DebugSettings{
-    simd::float3 sunDirection = { 1.0f, 0.3f, 1.0f };
-    float BayerScale = 0.04;
-    float volumeDensity = 0.03;
-    float g = 0.6;
+    
+    int has_oblique_plane;
+    simd::float4 plane;
 };

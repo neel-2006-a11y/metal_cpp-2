@@ -19,8 +19,9 @@ public:
     void setDiffuseTexture(MaterialID mat, TextureID tex);
     void setSampler(MaterialID mat, uint32_t slot, SamplerID sampler);
     void setPipeline(MaterialID mat, PipelineID pipeline);
+    void setBuffer(MaterialID mat, MaterialUniforms MU);
     
-    std::unordered_map<MaterialID, int> getAllUniforms(std::vector<MaterialUniforms>& out);
+    std::unordered_map<int, MaterialID> getAllUniforms(std::vector<MaterialUniforms>& out);
     
     Material* get(MaterialID id);
     

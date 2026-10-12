@@ -16,6 +16,7 @@ public:
     // owned / output
     TextureID depthTexture;
     TextureID sceneColorTexture;
+    TextureID normalTexture;
     
     // input
     TextureID shadowMapTexture;

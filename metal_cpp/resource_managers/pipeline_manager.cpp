@@ -17,12 +17,17 @@ PipelineID PipelineManager::createPipeline(PipelineDesc& desc){
     MTL::Function* vFunc = library->newFunction(NS::String::string(desc.vertexFunc.c_str(), NS::UTF8StringEncoding));
     
     if (!vFunc) {
-        printf("Vertex function not found!\n");
+        std::cerr << "Vertex Function not found" << std::endl;
+        return INVALID_SHADER;
     }
     
     MTL::Function* fFunc = nullptr;
     if(!desc.fragmentFunc.empty()){
         fFunc = library->newFunction(NS::String::string(desc.fragmentFunc.c_str(), NS::UTF8StringEncoding));
+        if(!fFunc){
+            std::cerr << "Fragment Function not found" << std::endl;
+            return INVALID_SHADER;
+        }
     }
     
     auto* rpDesc = MTL::RenderPipelineDescriptor::alloc()->init();
@@ -34,14 +39,15 @@ PipelineID PipelineManager::createPipeline(PipelineDesc& desc){
     rpDesc->setVertexDescriptor(vertexDescriptor);
     
     rpDesc->colorAttachments()->object(0)->setPixelFormat(toMTLPixelFormat(desc.colorFormat));
+    rpDesc->colorAttachments()->object(1)->setPixelFormat(toMTLPixelFormat(desc.normalFormat));
     rpDesc->setDepthAttachmentPixelFormat(toMTLPixelFormat(desc.depthFormat));
     
     MTL::RenderPipelineState* pipeline = device->newRenderPipelineState(rpDesc, &error);
     if(!pipeline){
         std::cerr << error->localizedDescription()->utf8String() << std::endl;
     }
-    
-    vFunc->release();
+    if(vFunc)
+        vFunc->release();
     if(fFunc)
         fFunc->release();
     vertexDescriptor->release();

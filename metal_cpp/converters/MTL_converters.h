@@ -18,6 +18,8 @@ MTL::TextureUsage toMTLTextureUsage(TextureUsage usage);
 
 MTL::StorageMode toMTLStorageMode(StorageMode storageMode);
 
+MTL::TextureType toMTLTextureType(TextureType textureType);
+
 MTL::TextureDescriptor* buildMTLTextureDesc(TextureDesc& desc);
 
 

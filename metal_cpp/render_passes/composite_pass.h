@@ -14,6 +14,7 @@ public:
     TextureID inputColor; // output
     TextureID volumeColor;
     TextureID densityTexture;
+    TextureID outlineTexture;
     
     // pipeline
     PipelineID pipeline;

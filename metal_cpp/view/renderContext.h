@@ -14,13 +14,13 @@
 #include "resource_managers/ModelLoader.h"
 #include "resource_managers/depthStencilManager.h"
 #include "resource_managers/sampler_manager.h"
+#include "config.h"
 
 struct RenderObject {
     MeshID mesh;
     MaterialID material;
     
-    size_t object_index;
-    size_t material_index;
+    size_t object_index; // object's uniform's index in the object buffer
 };
 
 struct RenderQueue{
@@ -56,6 +56,7 @@ struct RenderContext{
     MTL::CommandBuffer* cmd;
     MTL::Texture* backBuffer;
     
+    ViewUniforms viewUniforms;
     MTL::Buffer* frameBuffer;
     ObjectBufferData objectBufferData;
     MaterialBufferData materialBufferData;
@@ -74,5 +75,5 @@ struct RenderContext{
     int curr_window_width, curr_window_height;
     int curr_fb_width, curr_fb_height;
     
-    DebugSettings debugData;
+    DebugSettings* debugData;
 };

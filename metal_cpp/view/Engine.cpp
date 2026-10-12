@@ -12,6 +12,7 @@
 #include "ImGui/imgui_impl_glfw.h"
 #include "ImGui/imgui_impl_metal.h"
 #include "view/renderer2.h"
+#include "view/renderView.h"
 
 Engine::Engine(GLFWwindow* window) : mouseHandler(window), keyboard(window){
     this->window = window;
@@ -22,6 +23,9 @@ void Engine::init(){
     lastTime = glfwGetTime();
 }
 
+void Engine::get_references(RenderDevice rd){
+    portal_texture_pool.assign_texManager(rd.textureManager);
+}
 
 void Engine::update(Scene& scene){
     NS::AutoreleasePool* pool = NS::AutoreleasePool::alloc()->init();
@@ -29,9 +33,24 @@ void Engine::update(Scene& scene){
     lastTime = currTime;
     currTime = glfwGetTime();
     
+    // -------------
+    // any other updates on nodes
+    // -------------
+//    SceneNode* sphereNode = Node::findNode(scene.getRoot(), "Sphere");
+//    sphereNode->localT.position.x += 0.01;
+//    simd_quatf nudge = simd_quaternion(0.0f,1.0f,0.0f,(float)((currTime-lastTime) * 0.06));
+//    sphereNode->localT.rotation = simd_mul(sphereNode->localT.rotation, nudge);
+    
+//    SceneNode* sphereNode = findNode(scene.getRoot(), "Cube");
+//    simd_quatf nudge = simd_quaternion(0.0f,1.0f,0.0f,(float)((currTime-lastTime) * 0.06));
+//    sphereNode->localT.rotation = simd_mul(sphereNode->localT.rotation, nudge);
+    
+    // -------------
+    
     int width,height;
     glfwGetWindowSize(window, &width, &height);
     scene.activeCamera().setAspect(float(width) / float(height));
+//    scene.activeCamera().setAspect(1);
     
     keyboard.update();
     mouseHandler.update();
@@ -48,6 +67,66 @@ void Engine::update(Scene& scene){
     makeFrameData(scene);
     
     pool->release();
+}
+
+void Engine::make_renderViews(Scene& scene, std::vector<RenderView>& views){
+    portal_cameras.clear();
+    views.clear();
+    
+    RenderView rv;
+    rv.camera = &scene.activeCamera();
+    rv.useDrawable = true;
+    
+    std::vector<TextureID> child_portal_textures;
+    for(auto p : scene.portals){
+        TextureID p_RT_id = renderView_portal(p, rv.camera, 1, scene, views);
+        
+        MaterialOverride mat_override;
+        
+        mat_override.mat = p->materialID;
+        
+        mat_override.bindings.push_back({
+            .slot = DIFFUSE_SLOT,
+            .texture = p_RT_id
+        });
+        rv.mat_overrides.push_back(mat_override);
+        child_portal_textures.push_back(p_RT_id);
+    }
+    
+    for(auto c : child_portal_textures)portal_texture_pool.release(c);
+    views.push_back(rv);
+}
+
+TextureID Engine::renderView_portal(Portal *p, Camera *real_camera, int depth, Scene& scene, std::vector<RenderView>& views){
+    if(depth > PORTAL_DEPTH){
+        return INVALID_TEXTURE;
+    }
+    RenderView rv;
+    rv.renderTarget = portal_texture_pool.aquire();
+    
+    auto virtual_cam = p->create_virtual(real_camera);
+    portal_cameras.push_back(virtual_cam); // lifetime till renderer renders
+    rv.camera = virtual_cam;
+    
+    std::vector<TextureID> child_portal_textures;
+    for(auto p : scene.portals){
+        TextureID p_RT_id = renderView_portal(p, rv.camera, depth+1, scene, views);
+        
+        MaterialOverride mat_override;
+        
+        mat_override.mat = p->materialID;
+        
+        mat_override.bindings.push_back({
+            .slot = DIFFUSE_SLOT,
+            .texture = p_RT_id
+        });
+        rv.mat_overrides.push_back(mat_override);
+        
+        child_portal_textures.push_back(p_RT_id);
+    }
+    for(auto c : child_portal_textures)portal_texture_pool.release(c);
+    views.push_back(rv);
+    return rv.renderTarget;
 }
 
 void Engine::makeFrameData(Scene &scene){
@@ -109,7 +188,7 @@ void Engine::handleFluidInput(){
 
         gridX = std::max(0,std::min(fluid.N+1, gridX));
         gridY = std::max(0,std::min(fluid.N+1, gridY));
-        fluid.addDensity(gridX, gridY, 10, simd::float4{5.0,0.0,0.0,0.0});
+        fluid.addDensity(gridX, gridY, fluid.N/10, simd::float4{5.0,0.0,0.0,0.0});
     }
 
     if(keyboard.isDown(GLFW_KEY_J)){
@@ -118,7 +197,7 @@ void Engine::handleFluidInput(){
 
         gridX = std::max(0,std::min(fluid.N+1, gridX));
         gridY = std::max(0,std::min(fluid.N+1, gridY));
-        fluid.addDensity(gridX, gridY, 10, simd::float4{0.0,5.0,0.0,0.0});
+        fluid.addDensity(gridX, gridY, fluid.N/10, simd::float4{0.0,5.0,0.0,0.0});
     }
 
     if(keyboard.isDown(GLFW_KEY_L)){
@@ -127,7 +206,7 @@ void Engine::handleFluidInput(){
         double dX = mouseHandler.currX - mouseHandler.lastX, dY = mouseHandler.currY - mouseHandler.lastY;
         double power = 10;
 
-        fluid.addVelocity(gridX, gridY, 5, dX * power, dY * power);
+        fluid.addVelocity(gridX, gridY, fluid.N/20, dX * power, dY * power);
     }
     
 }

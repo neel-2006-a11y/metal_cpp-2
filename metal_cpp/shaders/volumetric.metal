@@ -77,9 +77,9 @@ fragment float4 volumetricFS(VSOut in [[stage_in]],
     for(int i = 0; i < STEPS; i++){
         float3 samplePos = rayOrigin + t * rayDir;
         
-        int cascade = select_cascade_2((frame.view * float4(samplePos,1)).z, frame.cascadeSplits, frame.cascades);
+        int cascade = select_cascade((frame.view * float4(samplePos,1)).z, frame.cascadeSplits, frame.cascades);
         
-        float lit = 1-shadowCalculationCSM_dither_2(samplePos, shadowMap, samp, frame.sunVPs[cascade], cascade);
+        float lit = 1-shadowCalculationCSM(samplePos, shadowMap, samp, frame.sunVPs[cascade], cascade);
         
         result += lit * frame.volumeDensity * stepSize * phase; // density
         t+=stepSize;

@@ -18,6 +18,7 @@ void ImGuiPass::init(RenderDevice renderDevice){
 void ImGuiPass::execute(RenderContext renderContext, RenderGraph* renderGraph){
     
     rpDesc->colorAttachments()->object(0)->setTexture(renderContext.backBuffer);
+//    std::cout << "backBuffer width: " << renderContext.backBuffer->width() << ", " << "backBuffer height: " << renderContext.backBuffer->height() << std::endl;
     
     // ------------
     // Start frame
@@ -29,18 +30,24 @@ void ImGuiPass::execute(RenderContext renderContext, RenderGraph* renderGraph){
     // ------------
     // UI
     // ------------
-    auto& dbg = renderContext.debugData;
+    DebugSettings* dbg = renderContext.debugData;
     ImGui::Begin("Debug");
     
     ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
     
-    ImGui::SliderFloat3("Sun Dir", (float*)&dbg.sunDirection, -1.0, 1.0);
+    ImGui::SliderFloat3("Sun Dir", (float*)&dbg->sunDirection, -1.0, 1.0);
     
-    ImGui::SliderFloat("Bayer Scale", &dbg.BayerScale, 0.0, 0.1);
+    ImGui::SliderFloat("Bayer Scale", &dbg->BayerScale, 0.0, 1.0);
     
-    ImGui::SliderFloat("Fog Density", &dbg.volumeDensity, 0.0, 0.2f);
+    ImGui::SliderFloat("Fog Density", &dbg->volumeDensity, 0.0, 0.2f);
     
-    ImGui::SliderFloat("g", &dbg.g, -1.0, 2.0);
+    ImGui::SliderFloat("g", &dbg->g, -1.0, 2.0);
+    
+    ImGui::SliderFloat("depth_thres", &dbg->depth_thres, 0.0, 1.0);
+    ImGui::SliderFloat("normal_thres", &dbg->normal_thres, 0.0, 2.0);
+    
+    ImGui::SliderInt("ink_width", &dbg->ink_width, 1, 100);
+
     ImGui::End();
     
     // ------------
@@ -52,12 +59,20 @@ void ImGuiPass::execute(RenderContext renderContext, RenderGraph* renderGraph){
     if(selected)
         drawInspector(selected);
     
-    // ------------
-    // Gizmo
-    // ------------
-//    translateGizmo.draw_and_update(&gizmoState, selected, *renderer.camera, renderer.curr_window_width, renderer.curr_window_height);
     
     encoder = renderContext.cmd->renderCommandEncoder(rpDesc);
+    
+    
+    ImGuiIO& io = ImGui::GetIO();
+
+//    printf("DisplaySize = %.0f %.0f\n",
+//           io.DisplaySize.x,
+//           io.DisplaySize.y);
+//
+//    printf("FramebufferScale = %.1f %.1f\n",
+//           io.DisplayFramebufferScale.x,
+//           io.DisplayFramebufferScale.y);
+
     
     ImGui::Render();
     ImGui_ImplMetal_RenderDrawData(ImGui::GetDrawData(), renderContext.cmd, encoder);
@@ -131,9 +146,6 @@ void ImGuiPass::drawInspector(SceneNode* node)
 
             ImGui::Text("MeshID: %d", node->renderComponent->meshID);
             ImGui::Text("MaterialID: %d", node->renderComponent->materialID);
-
-            ImGui::DragFloat("TileScale",
-                (float*)&node->renderComponent->tileScale, 0.1f);
         }
     }
 

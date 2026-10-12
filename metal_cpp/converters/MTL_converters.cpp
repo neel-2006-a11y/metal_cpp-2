@@ -8,7 +8,7 @@
 #include "converters/MTL_converters.h"
 #include "passers/MTL_Texture_passer.h"
 
-inline MTL::PixelFormat toMTLPixelFormat(TextureFormat format)
+MTL::PixelFormat toMTLPixelFormat(TextureFormat format)
 {
     switch (format)
     {
@@ -26,7 +26,7 @@ inline MTL::PixelFormat toMTLPixelFormat(TextureFormat format)
     }
 }
 
-inline MTL::TextureUsage toMTLUsage(TextureUsage usage)
+MTL::TextureUsage toMTLUsage(TextureUsage usage)
 {
     MTL::TextureUsage result = MTL::TextureUsageUnknown;
 
@@ -45,13 +45,22 @@ inline MTL::TextureUsage toMTLUsage(TextureUsage usage)
     return result;
 }
 
-inline MTL::StorageMode toMTLStorageMode(StorageMode storageMode){
+MTL::StorageMode toMTLStorageMode(StorageMode storageMode){
     switch(storageMode)
     {
         case StorageMode::Private:    return MTL::StorageModePrivate;
         case StorageMode::Shared:     return MTL::StorageModeShared;
         case StorageMode::Managed:    return MTL::StorageModeManaged;
         case StorageMode::MemoryLess: return MTL::StorageModeMemoryless;
+    }
+}
+
+MTL::TextureType toMTLTextureType(TextureType textureType){
+    switch(textureType)
+    {
+        case TextureType::TextureType2D :       return MTL::TextureType2D;
+        case TextureType::TextureType2DArray :  return MTL::TextureType2DArray;
+        case TextureType::TextureType3D :       return MTL::TextureType3D;
     }
 }
 
@@ -62,22 +71,24 @@ MTL::TextureDescriptor* buildMTLTextureDesc(TextureDesc& desc)
     // --------------------
     // Texture Type
     // --------------------
-    if (desc.layers > 1)
-    {
-        mtlDesc->setTextureType(MTL::TextureType2DArray);
-        mtlDesc->setArrayLength(desc.layers);
-    }
-    else
-    {
-        mtlDesc->setTextureType(MTL::TextureType2D);
-    }
+//    if (desc.layers > 1)
+//    {
+//        mtlDesc->setTextureType(MTL::TextureType2DArray);
+//        mtlDesc->setArrayLength(desc.layers);
+//    }
+//    else
+//    {
+//        mtlDesc->setTextureType(MTL::TextureType2D);
+//    }
+    mtlDesc->setTextureType(toMTLTextureType(desc.textureType));
+    mtlDesc->setArrayLength(desc.layers);
 
     // --------------------
     // Dimensions
     // --------------------
     mtlDesc->setWidth(desc.width);
     mtlDesc->setHeight(desc.height);
-    mtlDesc->setDepth(1);
+    mtlDesc->setDepth(desc.depth);
 
     // --------------------
     // Format
@@ -116,13 +127,14 @@ MTL::TextureDescriptor* buildMTLTextureDesc(TextureDesc& desc)
 }
 
 MTL::VertexDescriptor* buildMTLVertexDescriptor(VertexLayout& layout){
+    // only one buffer layout for now, so we are not setting attrib.buffer_index and its default to 0
     auto desc = MTL::VertexDescriptor::alloc()->init();
     
     for(auto& attrib : layout.attributes){
         auto mtlAttr = desc->attributes()->object(attrib.location);
         
         mtlAttr->setOffset(attrib.offset);
-        mtlAttr->setBufferIndex(0);
+        mtlAttr->setBufferIndex(attrib.buffer_index);
         
         switch (attrib.type) {
                 

@@ -42,21 +42,26 @@ struct SceneNode {
     bool visible = true;
 };
 
-void assignParent(SceneNode* child, SceneNode* parent);
-
-SceneNode* createNode(SceneNode* parent);
-
-
-void updateNode(SceneNode* node);
-
 struct Renderable{
     RenderComponent* renderComponent;
     
     ObjectUniforms objectUniforms;
 };
 
-void assignPipelineID(SceneNode* node, PipelineID pipeID, MaterialManager& matMgr);
+namespace Node{
+    void assignParent(SceneNode* child, SceneNode* parent);
 
-SceneNode* buildSampleSceneNode(RenderDevice renderDevice);
+    SceneNode* createNode(SceneNode* parent);
 
-void extractRenderables(SceneNode* node, std::vector<Renderable>& renderables);
+    SceneNode* findNode(SceneNode* parent, std::string name);
+
+    void updateNode(SceneNode* node);
+
+    void assignPipelineID(SceneNode* node, PipelineID pipeID, MaterialManager* matMgr);
+    void copyMaterialBindings(SceneNode* node, MaterialID matID, MaterialManager* matMgr);
+    void assignMaterialBuffer(SceneNode* node, MaterialUniforms MU, MaterialManager* matMgr);
+
+    SceneNode* buildSampleSceneNode(RenderDevice renderDevice);
+
+    void extractRenderables(SceneNode* node, std::vector<Renderable>& renderables);
+}

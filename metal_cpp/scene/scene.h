@@ -9,6 +9,8 @@
 #include "scene/SceneNode.h"
 #include "view/camera.h"
 #include "view/directional_light.h"
+#include "scene/portal.h"
+
 
 class Scene{
 public:
@@ -21,9 +23,12 @@ public:
     DirectionalLight& getSun();
     
     void buildSampleScene(RenderDevice rd);
+    void extractRenderables(std::vector<Renderable>& renderables);
+    
+    std::vector<Portal*> portals;
     
 private:
     SceneNode root;
     Camera camera;
-    DirectionalLight sun;
+    DirectionalLight sun;  
 };

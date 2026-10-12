@@ -35,7 +35,7 @@ struct FluidCommandBuffer{
 
 class FluidInteractor{
 public:
-    int N = 256; // temporary
+    int N = 512; // temporary
     
     void addDensity(int x, int y, int size, simd::float4 amount);
     

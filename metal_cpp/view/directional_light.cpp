@@ -13,6 +13,7 @@ DirectionalLight::DirectionalLight(){
 }
 
 void DirectionalLight::update(Camera *camera){
+    worldFrustrums.clear();
     computeCascadeSplits(camera, 0.5);
     computeCascadeFrustrums(camera);
     fitCameraFrustrums(worldFrustrums);
@@ -75,17 +76,11 @@ simd::float4x4 DirectionalLight::View(){
     return view;
 }
 
-void DirectionalLight::fitCameraFrustrums(std::vector<worldFrustrum> frustrums){
+void DirectionalLight::fitCameraFrustrums(const std::vector<worldFrustrum>& frustrums){
     simd::float4x4 light_view = View();
     for (int i=0; i<cascades; i++) {
-        simd::float3 center = 0;
         simd::float3 max_ = simd::float3(-FLT_MAX);
         simd::float3 min_ = simd::float3(FLT_MAX);
-        
-        for(auto p : frustrums[i].points){
-            center += p;
-        }
-        center /= 8;
         
         for(auto p : frustrums[i].points){
             simd::float4 p_light_space = light_view * simd::float4{p.x, p.y, p.z, 1.0};
@@ -95,7 +90,7 @@ void DirectionalLight::fitCameraFrustrums(std::vector<worldFrustrum> frustrums){
 
         
         float margin = 0.1f * fmax((max_.x - min_.x), (max_.y-min_.y));
-        float marginZ = 20.0f;
+        float marginZ = 200.0f;
         proj[i] = mtlm::orthographic_projection(min_.x-margin, max_.x+margin, min_.y-margin, max_.y+margin, min_.z - marginZ, max_.z + marginZ);
         viewProj[i] = proj[i] * light_view;
     }

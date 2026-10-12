@@ -27,3 +27,4 @@ public:
 private:
     std::unordered_map<std::type_index, std::any> data;
 };
+

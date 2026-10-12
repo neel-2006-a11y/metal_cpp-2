@@ -21,8 +21,9 @@ struct PipelineDesc
     
     VertexLayout vertexLayout;
     
-    TextureFormat colorFormat;
-    TextureFormat depthFormat;
+    TextureFormat colorFormat = TextureFormat::Unknown;
+    TextureFormat normalFormat = TextureFormat::Unknown;
+    TextureFormat depthFormat = TextureFormat::Unknown;
 };
 
 struct ComputePipelineDesc

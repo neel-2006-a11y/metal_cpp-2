@@ -24,6 +24,12 @@ public:
     // Resize
     void setAspect(float aspect);
     
+    // set plane
+    bool hasPlane();
+    simd::float4 getPlane();
+    void setPlane(simd::float4 plane);
+    void unsetPlane();
+    
     // Orientation
     simd::float3 forward() const;
     simd::float3 right() const;
@@ -34,7 +40,12 @@ public:
     simd::float4x4 projection() const;
     simd::float4x4 viewProjection() const;
     
+    void set_position(simd::float3 p);
     simd::float3 position() const {return pos;}
+    
+    void setForward(simd::float3 f);
+    void setYaw(float yaw);
+    void setPitch(float pitch);
     
     bool relativeMouse = false;
     
@@ -51,4 +62,8 @@ private:
     float pitch;
     float speed;
 
+    
+    // oblique plane
+    bool has_plane = false;
+    simd::float4 plane;
 };

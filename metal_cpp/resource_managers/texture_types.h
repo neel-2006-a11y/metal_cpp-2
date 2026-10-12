@@ -78,12 +78,24 @@ enum class StorageMode {
 };
 
 // ---------------
+// Texture Type
+// ---------------
+enum class TextureType {
+    TextureType2D,
+    TextureType2DArray,
+    TextureType3D
+};
+
+// ---------------
 // Texture Descriptor
 // ---------------
 struct TextureDesc{
-    int width = 1;
+    int width  = 1;
     int height = 1;
+    int depth  = 1;
     int layers = 1;
+    
+    TextureType textureType = TextureType::TextureType2D;
     TextureFormat format = TextureFormat::RGBA8Unorm;
     TextureUsage usage = TextureUsage::Sampled;
     StorageMode storageMode = StorageMode::Private;

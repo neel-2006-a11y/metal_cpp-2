@@ -19,7 +19,8 @@ public:
     ~App();
 
     void Run();
-    void resize(int width, int height, int fbWidth, int fbHeight);
+    void resize();
+    bool to_resize = false;
 
 private:
     MTL::Device* device;
@@ -28,4 +29,8 @@ private:
     Renderer2* renderer2;
     Engine* engine;
     Scene scene;
+    
+    
+    // synchronization resources
+    dispatch_semaphore_t frameSemaphore = dispatch_semaphore_create(FIF);
 };

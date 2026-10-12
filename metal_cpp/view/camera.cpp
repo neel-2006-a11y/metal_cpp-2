@@ -43,6 +43,23 @@ void Camera::processMouse(float dx, float dy){
     if(pitch < -89.0f) pitch = -89.0f;
 }
 
+void Camera::setPlane(simd::float4 plane){
+    has_plane = true;
+    this->plane = plane;
+}
+
+void Camera::unsetPlane(){
+    has_plane = false;
+}
+
+bool Camera::hasPlane(){
+    return has_plane;
+}
+
+simd::float4 Camera::getPlane(){
+    return plane;
+}
+
 simd::float3 Camera::forward() const{
     float cy = cosf(yaw * M_PI / 180.0f);
     float sy = sinf(yaw * M_PI / 180.0f);
@@ -75,4 +92,21 @@ simd::float4x4 Camera::projection() const {
 
 simd::float4x4 Camera::viewProjection() const {
     return projection() * view();
+}
+
+void Camera::set_position(simd::float3 p){
+    pos = p;
+}
+
+void Camera::setForward(simd::float3 f){
+    yaw = atan2(f.z, f.x) * 180 / M_PI;
+    pitch = asin(f.y) * 180 / M_PI;
+}
+
+void Camera::setYaw(float yaw){
+    this->yaw = yaw;
+}
+
+void Camera::setPitch(float pitch){
+    this->pitch = pitch;
 }

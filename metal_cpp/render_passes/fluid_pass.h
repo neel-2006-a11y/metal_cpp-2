@@ -61,9 +61,11 @@ public:
     
 private:
     int N = 256;
-    int steps = 200;
+    int steps = 50;
+    // 256 * 256 * 200 ->15ms
+    // 1024 * 1024 * 12 -> 15ms
     float viscosity = 0.0001;
-    float diffusion = 0.0001;
+    float diffusion = 0.000;
     
     void publish(RenderGraph* renderGraph);
     
@@ -78,7 +80,7 @@ private:
     void addVelocity(int x, int y, int size, float amountX, float amountY, RenderContext renderContext);
     
     // update
-    void set_bnd_2(int b, TextureID x, RenderContext renderContext);
+    void set_bnd_2(int b, TextureID x, RenderContext renderContext, MTL::ComputeCommandEncoder* enc);
     
     void add_source_2(TextureID x, TextureID s, float dt, RenderContext renderContext);
     

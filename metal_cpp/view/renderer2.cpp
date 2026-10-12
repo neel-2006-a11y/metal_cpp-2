@@ -7,14 +7,18 @@
 
 #include "view/renderer2.h"
 #include "backend/mtlm.h"
+#include <dispatch/dispatch.h>
+#include "passers/MTL_Texture_passer.h"
 
 inline size_t align256(size_t size) {
     return size;
 //    return (size + 255) & ~255;
 }
 
-Renderer2::Renderer2(MTL::Device* device, CA::MetalLayer* layer, GLFWwindow* glfwWindow): device(device), metalLayer(layer), glfwWindow(glfwWindow), pipelineManager(device, device->newDefaultLibrary()), modelLoader(&meshManager, &textureManager, &materialManager), depthStencilStateManager(device), samplerManager(device){
+Renderer2::Renderer2(MTL::Device* device, CA::MetalLayer* layer, GLFWwindow* glfwWindow, dispatch_semaphore_t* frameSemaphore): device(device), metalLayer(layer), glfwWindow(glfwWindow), pipelineManager(device, device->newDefaultLibrary()), modelLoader(&meshManager, &textureManager, &materialManager), depthStencilStateManager(device), samplerManager(device){
+    
     commandQueue = device->newCommandQueue();
+    this->frameSemaphore = frameSemaphore;
 }
 
 void Renderer2::init(){
@@ -31,29 +35,44 @@ void Renderer2::init(){
     
     initFrameBuffer();
     initObjectBuffer(10);
-    initMaterialBuffer(10);
+//    initMaterialBuffer(10);
     
     auto rd = renderDevice();
     shadowPass.init(rd);
     mainPass.init(rd);
+    outlinePass.init(rd);
     volumetricPass.init(rd);
-    fluidPass.init(rd);
+//    fluidPass.init(rd);
     compositePass.init(rd);
     imGuiPass.init(rd);
+    
+    
+    // debug data init
+    debug.sunDirection = { 1.0f, 0.3f, 1.0f };
+    debug.BayerScale = 0.5;
+    debug.volumeDensity = 0.03;
+    debug.g = 0.6;
+
 }
 
-void Renderer2::resize(int width, int height, int fb_width, int fb_height){
-    resizePasses = true;
+void Renderer2::resize(){
     
-    curr_window_width = width;
-    curr_window_height = height;
-    curr_fb_width = fb_width;
-    curr_fb_height = fb_height;
+    resizePasses = true;
+    std::cout << "renderer resized!!!!\n";
+    
+    int window_w,window_h, fb_w,fb_h;
+    glfwGetWindowSize(glfwWindow, &window_w, &window_h);
+    glfwGetFramebufferSize(glfwWindow, &fb_w, &fb_h);
+    
+    curr_window_width = window_w;
+    curr_window_height = window_h;
+    curr_fb_width = fb_w;
+    curr_fb_height = fb_h;
     
     //--------------
     // Update drawable size
     //--------------
-    metalLayer->setDrawableSize(CGSizeMake(fb_width, fb_height));
+    metalLayer->setDrawableSize(CGSizeMake(fb_w, fb_h));
 }
 
 RenderDevice Renderer2::renderDevice(){
@@ -76,13 +95,14 @@ RenderDevice Renderer2::renderDevice(){
 
 void Renderer2::makeFrameUniforms(const FrameInfo& frameData){
     frameUniforms.cameraPos = frameData.camera->position();
+    frameUniforms.far = frameData.camera->farZ;
     frameUniforms.view = frameData.camera->view();
     frameUniforms.proj = frameData.camera->projection();
     frameUniforms.viewProj = frameData.camera->viewProjection();
     frameUniforms.invViewProj = inverse(frameUniforms.viewProj);
     
     frameUniforms.intensity = frameData.sun->intensity;
-    frameData.sun->direction = simd::normalize(debug.sunDirection);
+    frameData.sun->direction = simd::normalize(debug.sunDirection); // get from debug
     frameUniforms.direction = frameData.sun->direction;
     frameUniforms.color = frameData.sun->color;
     frameUniforms.cascades = frameData.sun->cascades;
@@ -91,38 +111,65 @@ void Renderer2::makeFrameUniforms(const FrameInfo& frameData){
     
     memcpy(frameUniforms.sunVPs, sunVps.data(), sizeof(simd::float4x4) * frameData.sun->cascades);
     memcpy(frameUniforms.cascadeSplits, frameData.sun->cascadeSplits.data(), sizeof(float) * frameData.sun->cascades);
-    frameUniforms.BayerScale = debug.BayerScale;
     
+    // debug
+    frameUniforms.BayerScale = debug.BayerScale; // get from debug
     frameUniforms.volumeDensity = debug.volumeDensity;
     frameUniforms.g = debug.g;
+    frameUniforms.exp_factor = debug.exp_factor;
+    
+    frameUniforms.has_oblique_plane = (int)frameData.camera->hasPlane();
+    frameUniforms.plane = frameData.camera->getPlane();
 }
 
-void Renderer2::render(Scene& scene, ResourceRegistry& resourceRegistry, FrameDataRegistry& frameDataRegisry){
-    NS::AutoreleasePool* pool = NS::AutoreleasePool::alloc()->init();
+ViewUniforms Renderer2::makeViewUniforms(Camera* camera, DirectionalLight* sun){
+    ViewUniforms vf;
+    vf.cameraPos = camera->position();
+    vf.far = camera->farZ;
+    vf.view = camera->view();
+    vf.proj = camera->projection();
+    vf.viewProj = camera->viewProjection();
+    vf.invViewProj = inverse(vf.viewProj);
     
+    // fit the shadowmap in camera's frustrum
+    sun->update(camera);
+    
+    auto sunVps = sun->viewProj;
+    
+    memcpy(vf.sunVPs, sunVps.data(), sizeof(simd::float4x4) * sun->cascades);
+    memcpy(vf.cascadeSplits, sun->cascadeSplits.data(), sizeof(float) * sun->cascades);
+    
+    vf.has_oblique_plane = (int)camera->hasPlane();
+    vf.plane = camera->getPlane();
+    
+    return vf;
+}
+
+void Renderer2::render(Scene &scene, ResourceRegistry &resourceRegistry, FrameDataRegistry &frameDataRegistry, std::vector<RenderView> &renderViews){
+    NS::AutoreleasePool* pool = NS::AutoreleasePool::alloc()->init();
     beginFrame();
     
     // frame buffer
-    makeFrameUniforms(frameDataRegisry.get<FrameInfo>());
+    makeFrameUniforms(frameDataRegistry.get<FrameInfo>());
     uploadFrameUniforms();
     
     // material buffer
     std::vector<MaterialUniforms> matUniforms;
     auto mat_mp = materialManager.getAllUniforms(matUniforms);
-    uploadAllMaterialUniforms(matUniforms);
+    uploadAllMaterialUniforms(mat_mp, matUniforms);
     
     // object buffer
     std::vector<Renderable> renderables;
-    extractRenderables(scene.getRoot(), renderables);
+    scene.extractRenderables(renderables);
     uploadObjectUniforms(renderables);
     
     
-    // rendercontext
+    // build rendercontext
     RenderContext renderContext;
     
     renderContext.device = device;
     renderContext.cmd = cmd;
-    renderContext.backBuffer = backbuffer;
+    
     
     // buffers
     renderContext.frameBuffer = frameBuffer[frameIndex];
@@ -134,7 +181,7 @@ void Renderer2::render(Scene& scene, ResourceRegistry& resourceRegistry, FrameDa
     renderContext.objectBufferData.objectStride = objectStride;
     
     // render Queue (render objects)
-    renderContext.renderQ = makeRenderQueue(mat_mp, renderables);
+    renderContext.renderQ = makeRenderQueue(renderables);
     
     // window dim
     renderContext.curr_fb_width = curr_fb_width;
@@ -152,25 +199,51 @@ void Renderer2::render(Scene& scene, ResourceRegistry& resourceRegistry, FrameDa
     renderContext.samplerManager = &samplerManager;
     
     // debug
-    renderContext.debugData = debug;
+    renderContext.debugData = &debug;
     
     
     //--------------
     // Build RenderGraph
     //--------------
-    RenderGraph renderGraph(&resourceRegistry, &frameDataRegisry);
+    RenderGraph renderGraph(&resourceRegistry, &frameDataRegistry);
     renderGraph.addPass(&shadowPass);
     renderGraph.addPass(&mainPass);
-    renderGraph.addPass(&volumetricPass);
-    renderGraph.addPass(&fluidPass);
+    renderGraph.addPass(&outlinePass);
+//    renderGraph.addPass(&volumetricPass);
+//    renderGraph.addPass(&fluidPass);
     renderGraph.addPass(&compositePass);
-//    renderGraph.addPass(&imGuiPass);
+    renderGraph.addPass(&imGuiPass);
     
-//    // temporary
-//    imGuiPass.root = scene.getRoot();
     
-    renderGraph.execute(renderContext, resizePasses);
-    resizePasses = false;
+    RenderGraph renderGraph2(&resourceRegistry, &frameDataRegistry);
+    renderGraph2.addPass(&shadowPass);
+    renderGraph2.addPass(&mainPass);
+    renderGraph2.addPass(&outlinePass);
+    renderGraph2.addPass(&compositePass);
+    
+    for(auto rv : renderViews){
+        // material overrides
+        for(auto mo : rv.mat_overrides){
+            for(auto tb : mo.bindings)
+                materialManager.setTexture(mo.mat, tb.slot, tb.texture);
+        }
+        
+        ViewUniforms vf = makeViewUniforms(rv.camera, &scene.getSun());
+        
+        renderContext.viewUniforms = vf;
+        if(rv.useDrawable){
+            renderContext.backBuffer = backbuffer;
+            renderGraph.execute(renderContext, resizePasses);
+        }else{
+            Texture* RT = textureManager.get(rv.renderTarget);
+            uploadEmptyTextureToGPU(*RT, device);
+            renderContext.backBuffer = RT->gpuTexture;
+            renderGraph2.execute(renderContext, resizePasses);
+        }
+        
+        resizePasses = false;
+    }
+    
     
     endFrame();
     
@@ -178,28 +251,45 @@ void Renderer2::render(Scene& scene, ResourceRegistry& resourceRegistry, FrameDa
 }
 
 
-void Renderer2::beginFrame(){
-    frameIndex = (frameIndex + 1) % FIF;
+void Renderer2::beginFrame(TextureID RT){
     cmd = commandQueue->commandBuffer();
-    currentDrawable = metalLayer->nextDrawable();
-    backbuffer = currentDrawable->texture();
+    if(RT==INVALID_TEXTURE){
+        currentDrawable = metalLayer->nextDrawable();
+        backbuffer = currentDrawable->texture();
+    }else{
+        Texture* RTTex = textureManager.get(RT);
+        backbuffer = (MTL::Texture*)RTTex->gpuTexture;
+    }
+//    printf("fb_width: %d, fb_height: %d\n", curr_fb_width, curr_fb_height);
+//    printf("tex_width: %d, tex_height: %d\n", backbuffer->width(), backbuffer->height());
+//    printf("dr_width: %d, dr_height: %d\n", metalLayer->drawableSize().width, metalLayer->drawableSize().height);
+//    printf("\n");
 }
 
-void Renderer2::endFrame(){
-    cmd->presentDrawable(currentDrawable);
+void Renderer2::endFrame(TextureID RT){
+    if (RT == INVALID_TEXTURE && currentDrawable) {
+        cmd->presentDrawable(currentDrawable);
+    }
+
+    dispatch_semaphore_t semaphore = *(this->frameSemaphore);
+
+    cmd->addCompletedHandler([semaphore](MTL::CommandBuffer* /*cb*/) {
+        if (semaphore) {
+            dispatch_semaphore_signal(semaphore);
+        }
+    });
+
     cmd->commit();
+    frameIndex = (frameIndex + 1) % FIF;
 }
 
-RenderQueue Renderer2::makeRenderQueue(const std::unordered_map<MaterialID, int> &mat_mp, const std::vector<Renderable> &renderables){
+RenderQueue Renderer2::makeRenderQueue(const std::vector<Renderable> &renderables){
     RenderQueue rq;
     
     for(int i=0; i<renderables.size(); i++){
         RenderObject ro;
         ro.mesh = renderables[i].renderComponent->meshID;
         ro.material = renderables[i].renderComponent->materialID;
-        
-        auto it = mat_mp.find(ro.material);
-        ro.material_index = it == mat_mp.end() ? -1 : it->second;
         
         ro.object_index = i;
         
@@ -247,25 +337,38 @@ void Renderer2::uploadObjectUniforms(const std::vector<Renderable> &renderables)
 }
 
 
-void Renderer2::initMaterialBuffer(size_t maxMatCount){
-    
-    maxMaterials = maxMatCount;
-    materialStride = align256(sizeof(MaterialUniforms));
-    
-    size_t totalSize = materialStride * maxMatCount;
-    
-    for(int i=0; i<FIF; i++){
-        materialBuffer[i] = device->newBuffer(totalSize, MTL::ResourceStorageModeShared);
-    }
-}
+//void Renderer2::initMaterialBuffer(size_t maxMatCount){
+//    
+//    maxMaterials = maxMatCount;
+//    materialStride = align256(sizeof(MaterialUniforms));
+//    
+//    size_t totalSize = materialStride * maxMatCount;
+//    
+//    for(int i=0; i<FIF; i++){
+//        materialBuffer[i] = device->newBuffer(totalSize, MTL::ResourceStorageModeShared);
+//    }
+//}
 
-void Renderer2::uploadAllMaterialUniforms(const std::vector<MaterialUniforms>& materials){
+void Renderer2::uploadAllMaterialUniforms(std::unordered_map<int,MaterialID> &mat_mp, const std::vector<MaterialUniforms>& materials){
     
-    assert(materials.size() <= maxMaterials);
+//    assert(materials.size() <= maxMaterials);
+    size_t totalSize = 0;
+    for(auto matU : materials){
+        totalSize += matU.data.size();
+    }
+    if(materialBuffer[frameIndex] == nullptr)
+        materialBuffer[frameIndex] = device->newBuffer(totalSize, MTL::ResourceStorageModeShared);
     
     uint8_t* base = (uint8_t*)materialBuffer[frameIndex]->contents();
     
-    for(size_t i=0; i<materials.size(); i++){
-        memcpy(base + i * materialStride, &materials[i], sizeof(MaterialUniforms));
+    uint32_t offset = 0;
+    
+    for(int i=0; i<materials.size(); i++){
+        MaterialID mat_ID = mat_mp[i];
+        auto mat = materialManager.get(mat_ID);
+        mat->uniform_offset = offset;
+        memcpy(base + offset, materials[i].data.data(), materials[i].data.size());
+        offset += materials[i].data.size();
     }
 }
+

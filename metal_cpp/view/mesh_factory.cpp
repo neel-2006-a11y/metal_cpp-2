@@ -57,14 +57,23 @@ vertex_index_pair MeshFactory::buildCube2(simd::float3 scale){
         simd::float2 uvScale;
     };
 
+//    Face faces[] = {
+//        {{0,1,2,3}, normals[0], colors[0], {scale.x, scale.y}}, // front
+//        {{5,4,7,6}, normals[1], colors[1], {scale.x, scale.y}}, // back
+//        {{1,5,6,2}, normals[2], colors[2], {scale.z, scale.y}}, // right
+//        {{4,0,3,7}, normals[3], colors[3], {scale.z, scale.y}}, // left
+//        {{3,2,6,7}, normals[4], colors[4], {scale.x, scale.z}}, // top
+//        {{4,5,1,0}, normals[5], colors[5], {scale.x, scale.z}}  // bottom
+//    };
     Face faces[] = {
-        {{0,1,2,3}, normals[0], colors[0], {scale.x, scale.y}}, // front
-        {{5,4,7,6}, normals[1], colors[1], {scale.x, scale.y}}, // back
-        {{1,5,6,2}, normals[2], colors[2], {scale.z, scale.y}}, // right
-        {{4,0,3,7}, normals[3], colors[3], {scale.z, scale.y}}, // left
-        {{3,2,6,7}, normals[4], colors[4], {scale.x, scale.z}}, // top
-        {{4,5,1,0}, normals[5], colors[5], {scale.x, scale.z}}  // bottom
+        {{0,1,2,3}, normals[0], colors[0], {1, 1}}, // front
+        {{5,4,7,6}, normals[1], colors[1], {1, 1}}, // back
+        {{1,5,6,2}, normals[2], colors[2], {1, 1}}, // right
+        {{4,0,3,7}, normals[3], colors[3], {1, 1}}, // left
+        {{3,2,6,7}, normals[4], colors[4], {1, 1}}, // top
+        {{4,5,1,0}, normals[5], colors[5], {1, 1}}  // bottom
     };
+    
 
     std::vector<Vertex3D> vertices;
 
@@ -120,21 +129,22 @@ vertex_index_pair MeshFactory::buildSphere2(
 
     for (uint16_t i = 0; i <= stacks; ++i)
     {
-        float v = float(i) / stacks * radius;
+        float v = float(i) / stacks /** radius*/;
         float phi = v * M_PI; // 0 → π
 
         for (uint32_t j = 0; j <= slices; ++j)
         {
-            float u = float(j) / slices * radius;
+            float u = float(j) / slices /** radius*/;
             float theta = u * 2.0f * M_PI; // 0 → 2π
 
             float x = std::sin(phi) * std::cos(theta);
-            float y = std::cos(phi);
-            float z = std::sin(phi) * std::sin(theta);
+            float z = std::cos(phi);
+            float y = std::sin(phi) * std::sin(theta);
 
             Vertex3D vert;
             vert.position = { x * radius, y * radius, z * radius };
             vert.normal   = simd::normalize(simd::float3{x, y, z});
+//            vert.uv       = { static_cast<float>(radius * std::sin(phi) * theta), static_cast<float>(radius * phi) };
             vert.uv       = { u, v };
             vert.color    = simd::float3{1.0,1.0,1.0};
 
@@ -145,19 +155,20 @@ vertex_index_pair MeshFactory::buildSphere2(
     // Indices
     for (uint16_t i = 0; i < stacks; ++i)
     {
-        for (uint16_t j = 0; j < slices; ++j)
-        {
-            uint16_t row1 = i * (slices + 1);
-            uint16_t row2 = (i + 1) * (slices + 1);
+//        if(i==2 || i == stacks/2 || i==stacks-2)
+            for (uint16_t j = 0; j < slices; ++j)
+            {
+                uint16_t row1 = i * (slices + 1);
+                uint16_t row2 = (i + 1) * (slices + 1);
 
-            indices.push_back(Index(row1 + j));
-            indices.push_back(Index(row2 + j));
-            indices.push_back(Index(row1 + j + 1));
+                indices.push_back(Index(row1 + j));
+                indices.push_back(Index(row2 + j));
+                indices.push_back(Index(row1 + j + 1));
 
-            indices.push_back(Index(row1 + j + 1));
-            indices.push_back(Index(row2 + j));
-            indices.push_back(Index(row2 + j + 1));
-        }
+                indices.push_back(Index(row1 + j + 1));
+                indices.push_back(Index(row2 + j));
+                indices.push_back(Index(row2 + j + 1));
+            }
     }
 
 

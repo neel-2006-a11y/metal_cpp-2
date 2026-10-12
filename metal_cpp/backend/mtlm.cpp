@@ -73,8 +73,8 @@ simd::float4x4 mtlm::scale3D(simd::float3 factor){
 }
 
 simd::float4x4 mtlm::perspective_projection(float fovy, float aspect, float near, float far){
-    fovy = fovy * M_PI / 360.0f; // half_fovy
-    float t = tanf(fovy);
+    float fovy_2 = fovy * M_PI / 360.0f; // half_fovy
+    float t = tanf(fovy_2);
     float A = 1.0f / (t * aspect);
     float B = 1.0f / t;
     float C = far / (far - near);
